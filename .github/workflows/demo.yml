@@ -7,6 +7,10 @@ on:
       - main
       - feat/cluster-dag-motion-demo
 
+concurrency:
+  group: episode01-keyframes-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   demo:
     runs-on: ubuntu-latest
@@ -16,6 +20,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Install Chinese typography
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-noto-cjk
+          fc-cache -f
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Typecheck
