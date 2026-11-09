@@ -2,7 +2,7 @@ import React from 'react';
 import {useCurrentFrame} from 'remotion';
 import {
   hierarchyVertices,collapseSequence, hierarchySnapshots,
-  fineLODBounds,coarseLODBounds,hierarchyError,type Sphere,
+  fineLODBounds,coarseLODBounds,hierarchyError,firstCollapseQEM,type Sphere,
 } from './ch03Hierarchy';
 import {
   Scene,Guide,Cue,PatchGeometry,Exterior,makeView,projectLocal,pathFor,
@@ -111,7 +111,15 @@ export const Episode01Chapter05:React.FC=()=>{
           <path d={'M'+p.x+' '+p.y+' L'+p.x+' '+(p.y-110)}
             stroke={COLOR.cyan} strokeWidth={3} strokeDasharray="9 8"/>
           <text x={p.x+32} y={p.y-116} fill={COLOR.cyan}
-            fontFamily={MONO} fontSize={24}>PLANE DISTANCE</text>
+            fontFamily={MONO} fontSize={24}>SUM OF SQUARED PLANE DISTANCES</text>
+          <text x={960} y={345} fontSize={26} fontFamily={MONO}
+            textAnchor="middle" fill={COLOR.white}>
+            {'QEM COST AT KEPT VERTEX = '+firstCollapseQEM.toFixed(4)}
+          </text>
+          <text x={960} y={390} fontSize={21} fontFamily={MONO}
+            textAnchor="middle" fill={COLOR.muted}>
+            {'SUM (n·v + d)² · NOT LOD ERROR · NOT OPTIMAL COLLAPSE COST'}
+          </text>
         </>;
       })()}
     </g>
@@ -157,7 +165,7 @@ export const Episode01Chapter05:React.FC=()=>{
     )}
     <Cue t={t} a={0} b={14}
       headline="QUADRIC ERROR METRIC · INTUITION"
-      sub="Edge Collapse 要选择较低代价的位置，但 QEM 代价不是像素误差"/>
+      sub="QEM 累加相邻三角形平面距离平方；与 LOD Error 分开计算"/>
     <Cue t={t} a={14} b={27}
       headline="CHILD ERRORS + GROUP BOUNDS"
       sub="已有的误差球需要被父级保守包围"/>
