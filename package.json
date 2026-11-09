@@ -1,6 +1,6 @@
 {
   "name": "nanite-video",
-  "version": "0.3.0",
+  "version": "1.0.0-workprint",
   "private": true,
   "scripts": {
     "studio": "remotion studio src/index.ts",
@@ -15,7 +15,15 @@
     "validate:chapter02": "node --experimental-strip-types src/episode01/ch02Graph.ts",
     "still:episode01-graph": "remotion still src/index.ts Episode01Workprint out/episode-01-graph.png --frame=1590",
     "still:episode01-partition": "remotion still src/index.ts Episode01Workprint out/episode-01-partition.png --frame=1790",
-    "still:episode01-clusters-ch02": "remotion still src/index.ts Episode01Workprint out/episode-01-ch02-clusters.png --frame=2090"
+    "still:episode01-clusters-ch02": "remotion still src/index.ts Episode01Workprint out/episode-01-ch02-clusters.png --frame=2090",
+    "validate:hierarchy": "node --experimental-strip-types src/episode01/ch03Hierarchy.ts",
+    "validate:all": "npm run validate:geometry && npm run validate:episode01 && npm run validate:chapter02 && npm run validate:hierarchy",
+    "still:episode01-group": "remotion still src/index.ts Episode01Workprint out/episode-01-group.png --frame=2700",
+    "still:episode01-dag": "remotion still src/index.ts Episode01Workprint out/episode-01-dag.png --frame=4470",
+    "still:episode01-error": "remotion still src/index.ts Episode01Workprint out/episode-01-error.png --frame=6330",
+    "still:episode01-runtime": "remotion still src/index.ts Episode01Workprint out/episode-01-runtime.png --frame=8640",
+    "still:episode01-outro": "remotion still src/index.ts Episode01Workprint out/episode-01-outro.png --frame=9130",
+    "render:episode01-preview": "remotion render src/index.ts Episode01Workprint out/episode-01-complete-preview.mp4 --scale=0.5 --crf=24"
   },
   "dependencies": {
     "react": "^19.0.0",
