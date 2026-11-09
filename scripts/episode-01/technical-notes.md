@@ -41,6 +41,59 @@
 - DAG 表示几何层级依赖；Runtime 的遍历/剔除加速结构需要单独说明。**不能粗暴地断言 BVH 与 DAG 完全互不关联，或它们是同一个概念**；后续以实际版本的 hierarchy nodes/build steps 核对。
 - “LOD Cut” 在 EP01 只讲组级替换和依赖的直观含义；GPU 上按误差阈值并行选择的细节留给 EP02。
 
+## 第五章 P0 审稿：为什么 Error 和 Bounds 需要一起单调？
+
+### 官方演讲直接支持的命题
+
+SIGGRAPH 2021 *Nanite: A Deep Dive* 的 “LOD selection” / “LOD selection in parallel” 段落（PDF 讲义可搜索这些标题）：
+
+- 同一个 Cluster Group 的成员应使用**相同的 unioned error value 与 sphere bounds**，确保在并行评估时作出相同的 LOD 决策。
+- 并行选择的直觉规则是：本 Cluster 投影误差足够小、但更粗的替代表示投影误差太大。
+- 希望沿 DAG 依赖路径的投影误差单调，使每条路径上阈值从不合格到合格只转变一次。
+- 构建时对父级的存储 error 与用于投影的 bounds 做保守修正，保证父级的 view error 不小于子级。
+- 官方强调屏幕误差估计需考虑包围球中的最不利点和投影角度失真；这点不能被最简公式取代。
+
+公开来源： https://advances.realtimerendering.com/s2021/Karis_Nanite_SIGGRAPH_Advances_2021_final.pdf （对应讲义的 “LOD selection” 与 “LOD selection in parallel” 段落）。
+
+### 可以在教学中使用的简化数学证明
+
+令某 Cluster/Group 用物体空间误差 `e>0` 和一个误差投影包围球 `B` 表示，Camera 为 `V`，取
+
+```text
+d(V,B) = max(0, length(V - B.center) - B.radius)
+E(V,B,e) = K * e / max(d(V,B), near_epsilon)
+```
+
+其中 `K>0` 为视场角/分辨率相关系数，`near_epsilon>0` 是近距离下限。
+
+**若** `e_parent >= e_child` 且 `B_parent contains B_child`，那么由集合包含关系可得 `d(V,B_parent) <= d(V,B_child)`。因此这套*简化投影模型*满足：
+
+```text
+E_parent(V) >= E_child(V)   for every camera position V
+```
+
+这条性质由误差标量与空间 Bounds **共同**保证。仅有 `e_parent >= e_child` 不足以保证屏幕误差的顺序，因为两个不包含的球距离 Camera 可能差异极大。
+
+**边界条件**：近裁剪、相机位于球内、斜角投影的畸变处理和非均匀实例缩放可能使真实投影函数更加复杂。上述推导是教学近似，**不能宣称与 UE 5.7.4 的完整运行时误差代码等价**。需要确认实际投影修正同样保持单调（演讲特别提醒这一点）。
+
+### 叙事应有的先后顺序
+
+1. QEM 帮助选择 Edge Collapse 与最小误差候选位置。
+2. Simplifier 返回/构造可用于 LOD 层级的误差估计；该估计不等同于任意原始平方 QEM cost。
+3. 递归简化有累计误差，需要保守传播。
+4. **同一 Group 中的 Cluster 共享用于 LOD 决策的 Error + Bounds**，避免成员选择不一致。
+5. 单调性反例：存储标量单调但两球不嵌套，出现屏幕误差逆序。
+6. 把父误差与包围球都做成保守包含关系；用数学证明简化模型下的屏幕误差单调。
+7. 使用阈值线引出局部判断，保留 Group 级合法 Cut 约束，把 GPU 具体实现留到第二期。
+
+### UE 5.7.4 源码待验证
+
+- Error / Sphere 哪些字段存于 Cluster，哪些来自 Cluster Group 或父级依赖？同一 Group 共享数据是怎样序列化/使用的？
+- Error 的累积和 bounds 合并/修正是否分离，以及每一步与画面中简化示例的对应关系。
+- 运行时 `ViewError` 最不利点计算、近距离修正、实例变换规则；检查所有修正步骤是否仍保证单调性。
+- 若版本内使用了不同投影公式，应保留原理的教学推导，再将实际公式作为实现补充。
+
+
 ## 与 UE 5.7.4 源码核对的 TODO（未声称完成）
 
 | 优先级 | 待核对问题 | 剧本影响 |
