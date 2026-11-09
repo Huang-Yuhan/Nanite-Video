@@ -22,11 +22,17 @@ jobs:
         run: npm run check
       - name: Check topology trace
         run: npm run validate:geometry
+      - name: Validate Camera / DAG Cut invariants
+        run: npm run validate:runtime
       - name: Render a representative vector frame
         run: npm run still
+      - name: Render runtime cut still
+        run: npm run still:runtime
       - uses: actions/upload-artifact@v4
         if: success()
         with:
           name: nanite-demo-still
-          path: out/cover.png
+          path: |
+            out/cover.png
+            out/runtime-cut-cover.png
           retention-days: 7

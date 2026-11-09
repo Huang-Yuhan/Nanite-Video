@@ -2,6 +2,30 @@
 
 **代码驱动的 Nanite 算法动画，不使用 AI 视频生成。**
 
+## Runtime Demo：Camera ↔ DAG Cut（独立预览）
+
+这段演示是第一期《Nanite：从 Mesh 到 Cluster DAG》结尾的**最小 Runtime LOD 选择闭环**：左侧摄像机逐步接近网格，右侧依赖 DAG 的合法 Cut 随误差变化。它不是 UE 5.8.4 GPU Runtime 的逐函数复刻，也**不展示 BVH**。
+
+在已验证的原 Demo 数据之上，`src/runtimeCutData.ts` 给出两个共享外部接缝的 Mesh Patch。每个 Patch 都具有 4 fine / 2 coarse Clusters；Group A 的教学误差随 Camera 靠近跨越 1px 阈值，发生完整的 2 coarse → 4 fine 替换；Group B 保持 coarse。使用同一个 `RuntimeFrame` 驱动左侧的 Mesh LOD 和右侧被选中的 DAG 节点，确保两个画面不会各自硬编码状态。
+
+**运行方式（Node.js 22）：**
+
+```bash
+npm install
+npm run studio               # 在 Studio 中选择 RuntimeCameraDagCut
+npm run validate:geometry
+npm run validate:runtime     # 逐帧检查合法 Group 切换及两个 Mesh 的边界
+npm run check                # TypeScript 类型检查
+npm run still:runtime        # out/runtime-cut-cover.png
+npm run render:runtime       # out/runtime-camera-dag-cut.mp4
+```
+
+`RuntimeCameraDagCut` 是 **1920×1080 / 30 FPS / 18 秒** 的独立技术演示，时长不是正式影片的时长限制。场景右侧是 **LOD dependency DAG / Cut**，不是用于 Runtime Culling 的 BVH/Hierarchy。Camera/GPU 投影误差使用有意简化的模型 `E = 5*e/max(distance-to-sphere, 0.25)`；1px 阈值和 error 数值均是**教学设定**。这段演示采用真实的 fine/coarse 三角形集合切换，**不以连续形变冒充 Nanite 的运行时顶点插值**。
+
+当前代码作为基于 ClusterDagDemo PR 的**叠加 PR**，直到原 Demo 合入主分支前依赖它；两者均不会修改脚本文档 PR #2。
+
+---
+
 ## 25 秒 Demo：从 Cluster 到 DAG
 
 这版借鉴 3Blue1Brown 的可视化方法：**几何是画面主体，图形通过连续变化推导算法**；不再使用固定左右分栏、HUD 仪表盘或 PPT 式流程列表。
