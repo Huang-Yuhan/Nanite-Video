@@ -375,10 +375,6 @@ export const ClusterDagDemo: React.FC = () => {
           </g>
         )}
       </svg>
-      <div style={{position:'absolute',top:52,left:90,fontFamily:MONO,
-        fontSize:22,letterSpacing:3,color:QUIET}}>
-        NANITE <span style={{color:CYAN}}> / </span> BUILDING A CLUSTER DAG
-      </div>
       <Annotation t={t}/>
     </AbsoluteFill>
   );
