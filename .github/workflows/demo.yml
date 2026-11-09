@@ -22,11 +22,20 @@ jobs:
         run: npm run check
       - name: Check topology trace
         run: npm run validate:geometry
+      - name: Validate Episode 01 mesh LOD boundaries and triangle counts
+        run: npm run validate:episode01
       - name: Render a representative vector frame
         run: npm run still
+      - name: Render Episode 01 local geometry frame
+        run: npm run still:episode01-local
+      - name: Render Episode 01 cluster boundary frame
+        run: npm run still:episode01
       - uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: nanite-demo-still
-          path: out/cover.png
+          name: nanite-video-geometry-stills
+          path: |
+            out/cover.png
+            out/episode-01-local-lod.png
+            out/episode-01-clusters.png
           retention-days: 7
