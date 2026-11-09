@@ -1,0 +1,102 @@
+# Episode 01 · Storyboard V0.5（Camera ↔ DAG Cut 联动）
+
+> **视觉标准**：沿用已有的 ClusterDagDemo 方向——3Blue1Brown 式数学/几何动画、深色背景、克制配色、连续 Morph、必要时短暂显示术语与公式。**移除固定左上角标识和 PPT 侧栏**。
+>
+> 以下均为预期效果与素材需求，**本 PR 不新增/修改动画代码**。
+
+## 共通画面规则
+
+- 固定语义色：fine Cluster 使用蓝/绿/橙/紫；group 外边界金色；活动的 edge collapse 用亮橙色；辅助网格冷灰色；coarse 集合保持与对应关系一致的颜色。
+- 节点的颜色和几何 Cluster ID 绑定：同一个对象在 3D Mesh、Triangle Graph、Cluster Graph 和 DAG 中不能突然换身份。
+- 从 Mesh → Graph：三角形向重心缩小，邻接关系的共享边自然变成连接线；返回几何时反向 Morph。
+- 从 fine → coarse：按真实的离散拓扑状态变化演示 Edge Collapse；**不要靠淡入淡出冒充真实简化操作**。几何展示可以适度夸张并在设计说明中注明教学模型。
+- 精度与计数器必须由数据计算（triangles、boundary edges、nodes、error），不能只在屏幕上改硬编码文字。
+- 源数据分三级：A 教学构造但拓扑有效；B 离线自研简化器实际输出；C UE 5.8.4 实际数据导出。样片 A 可用于讲直觉，C 用于特定引擎实现断言。
+- 非必要时不要出现大段字幕；声音解释应与可见操作同帧发生。
+- **不预设时长。** 分镜按叙事顺序编排，具体镜头长度通过 animatic 测试；第三到第五章需要较多算法动画停顿，优先保证观众看得懂。
+
+## 01 · 为什么需要局部 LOD
+
+| Shot | 视觉动作 | 核心信息 / 验收 |
+| --- | --- | --- |
+| 01-01 | 从完整岩壁推进至细小裂纹；三角 Wireframe 逐渐显现，镜头回退 | 同一份高精度 Mesh，不用换资产；三角形确实存在于模型中 |
+| 01-02 | 同一模型执行三档整体 LOD 切换，特征轮廓随几何简化变化 | 画面说明 Mesh 级 LOD，不把切换的 Cross Fade 说成 Edge Collapse |
+| 01-03 | 长岩壁一端接近 Camera；整体高精度 vs 整体低精度来回比较近景轮廓和远景冗余 | 传达一块 Mesh 内部的屏幕精度需求不同 |
+| 01-04 | 同样的岩壁由近到远显示局部密度差异；最后恢复细网格并给三角形局部染色 | 引出「细粒度、自动生成」问题；明确局部 LOD 不是 Nanite 首创 |
+
+## 02 · Triangle Clustering
+
+| Shot | 视觉动作 | 核心信息 / 验收 |
+| --- | --- | --- |
+| 02-01 | 按一串打乱的索引顺序给三角形染色，形成多块离散同色区域 | 演示「索引次序 ≠ 几何邻接」；输入含真的乱序 triangle indices |
+| 02-02 | 三角形沿各自重心缩成点，邻接共享边旋转/缩成图的连接线 | 与网格拓扑一致，不允许随便补线 |
+| 02-03 | 展示两种受限 Partition；cut edges 金色闪亮，统计跨组边数 | 相同 triangles、相同 Cluster 预算下比较 |
+| 02-04 | 数学目标 min edge cut + Cluster 预算作为短暂公式出现；随后淡去 | 先用动画建立意义，后显示公式 |
+| 02-05 | 图节点 Morph 回 Mesh 的四种颜色区域，镜头锁定一条共享边 | 导出初始 Fine Cluster IDs 供下一章复用 |
+
+## 03 · Grouping / Simplification
+
+| Shot | 视觉动作 | 核心信息 / 验收 |
+| --- | --- | --- |
+| 03-01 | 两个相邻 Cluster 分别简化：一侧保留共享边顶点，另一侧删除，放大不匹配处 | 展示潜在 T-junction / 裂缝，不声称所有独立简化必然开裂 |
+| 03-02 | 撤销操作，给所有需要保持一致的边界加金色锁；不断简化时内部可变部分减少 | 说明「单独锁边界」的简化约束成本 |
+| 03-03 | 四块 Cluster 被选为一个 Group；内部原金色边转为冷灰，只有 Group 外边界保持金色 | 分清 Cluster 边界与 Group 边界 |
+| 03-04 | 将四个 Cluster 抽象成 Cluster Graph，做两种 Grouping，比较 edge cut 权重 | 这是第二次 Graph Partitioning：节点为 Cluster 而非 Triangle |
+| 03-05 | 四块三角形融为一个共享列表，依次发生 Edge Collapse；Group 外边界和端点原位不动 | 使用可验证 snapshots，保持外边界完全一致 |
+| 03-06 | 简化后的三角形重新按照 Partition 分配颜色，形成 2 个 coarse Clusters；与原 4 fine 严格对照 | 强调 Repartition 不保留旧 Cluster 的一对一空间分配 |
+
+## 04 · 从 Group 到 DAG
+
+| Shot | 视觉动作 | 核心信息 / 验收 |
+| --- | --- | --- |
+| 04-01 | 4 fine / 2 coarse 在相同空间覆盖范围对照；尝试给每个 fine 指定单个父节点 | 把「一对多树」的直觉问题具象化 |
+| 04-02 | 几何块收缩为节点；共同连向两个 coarse 节点，多对多边线增长 | 同一 GroupTransition 决定几何 ID 与依赖边 |
+| 04-03 | fine/coarse 轮流整体替换：外部边界始终贴合；故意演示错误的部分混选并提示「不可任意替换」 | 无裂缝的条件是 Group 级的合法替代，而不是每个节点单独开关 |
+| 04-04 | 新 coarse 重新 Group；旧边界渐变成新内部边，再参与后续简化 | 清楚表现约束不是永久继承 |
+| 04-05 | 多轮 Group / Simplify / Split 的图逐层长高，镜头拉远显示 DAG | 不把 DAG 等同于所有其他 runtime hierarchy |
+| 04-06 | 只展示一个有效 Cut 作为概念，保留摄像机与阈值悬念 | 不提前讲 Runtime LOD 实现 |
+
+## 05 · Geometric Error 与 Bounds（不设时长，以动画理解为准）
+
+### 联动动画约束
+
+本章最后采用**用户确认的左右同步构图**：左侧可见 Camera 与 3D Mesh，右侧可见 DAG、所选节点与 Cut。双视窗仅在该实验中出现，前面仍使用连续几何演变，不退化为固定 PPT 布局。画面必须明确指出右侧是 **LOD dependency DAG（不是 BVH）**；BVH/Hierarchy 的数据结构、剔除和遍历留到第二期。
+
+Cut 并不是沿一条固定水平线随镜头上下移动，而是满足 Group 依赖、覆盖正确性的**选中 Cluster 集合**；可以用随选中节点变化的曲线作为图形化提示。只有目标 Group 细化，不让全部组同时跟随相机跳级。
+
+
+
+| Shot | 视觉动作 | 核心信息 / 验收 |
+| --- | --- | --- |
+| 05-01 | 局部平面出现，显示候选顶点到各平面的平方距离累积；转化为基础 QEM 成本曲面 | 区分优化用的 cost 与长度、屏幕像素；讲清 QEM 的直觉而非演完整求解器 |
+| 05-02 | 两条候选 Edge Collapse 依代价高亮；顶点移到真实候选位置并更新拓扑 | 新位置不默认是中点；动画来源为可验证的简化数据 |
+| 05-03 | 前后两份几何重叠，高亮不同部位的偏差；显示「本次引入的 Error」但不直接使用 QEM cost 充当长度 | 区分本次误差、累计误差与投影误差 |
+| 05-04 | 四个 fine Clusters 各自展示独立的 `LODError` 与 `LODBounds`；构建 Group 的 union LODBounds，生成两枚 coarse Clusters，两者都使用**相同父级 `LODError` / `LODBounds`** | 精确对应 UE 5.8.4 `ReduceGroup`：Group 汇总 child，生成的 parents 共享数据；不误画 fine children 原来就全相同 |
+| 05-05 | 从子级误差、`SimplifyError` 两组值产生父级 `ParentLODError = Max(child errors, SimplifyError)`；沿多个层级反复执行 | UE 5.8.4 `ReduceGroup` 已核实该 max 关系，不是把 QEM cost 直接相加；实例变换时还需乘尺度 |
+| 05-06 | 反例：e_parent > e_child，但由于错误放置的非包含 Bounds，得到 E_screen(parent) < E_screen(child) | 强调「标量单调不够」。错误的 Bounds 必须明确标记为反例，不能冒充真实构建输出 |
+| 05-07 | `Group.LODBounds` 是子 Cluster `LODBounds` 的包围球并集，生成的 coarse Clusters 复制该误差球；Camera 绕行并观察最近点距离 | 必须标注 LODBounds（误差投影球）而不是 SphereBounds（几何包围球）；公式 E≈K·e/max(d(camera,LODBounds),ε) 仅为教学模型，运行时实现另核实 |
+| 05-08 | 阈值水平线穿过单调误差曲线，DAG 中合法 Cut 同步亮起；不展示完整 GPU 算法 | 一条根至叶路径只有一次有效阈值过渡；Group 依赖依然成立，具体 Runtime 放第二期 |
+| 05-09 | 公式与两个误差球渐渐退至背景；同一份模型和 Camera 左移，DAG 节点组平滑移动到右侧，形成仅用于本次推导的**临时双视窗** | 不做常驻 PPT 侧栏；从既有几何/DAG 连续运动生成两个关联视图；Cluster ID、颜色对应一致 |
+| 05-10 | **远景**：左侧 Camera 远离目标 Group，显示两块 coarse 几何；右侧 DAG 两个 coarse 节点同时被 Cut 选中，其他 Group 的节点保持选择不变 | 教学阈值 1px；教学误差 0.3px（非 UE 实测），显示同一 Group 的 coarse 节点作为完整集合 |
+| 05-11 | **接近**：Camera 连续前进；coarse 集合的 projected error 数字由 0.3px 平滑增加并越过 1px；右侧错误条带/阈值线联动 | Camera 距离、误差与 DAG 高亮必须来自同一套教学模型；阈值穿越前保持 coarse 选择，不提前切换 |
+| 05-12 | **Group 级替换**：右侧两枚 coarse 节点同时取消选择，四枚 fine 节点同时被选中，Cut 发生局部变化；左侧模型对应区域离散变细，相邻 Group 不变 | 用合法替换数据驱动：2 coarse ↔ 4 fine，不能出现混选或几何重叠；真实运行时是离散 LOD 选择，教学动画可用瞬态高亮，但不可把 Morph 说成引擎实时网格插值 |
+| 05-13 | Camera 停在近景，Cut 保持当前状态；从左右关联视图收束回 DAG 全图，随后浮现一层淡淡的 runtime hierarchy 轮廓作为下一期悬念 | 这里只讲「为什么该选」，不展示或断言具体 GPU BVH Traversal 算法；同一几何资产在第二期继续使用 |
+
+> 技术注释：QEM 代价、简化阶段估计的误差、累计误差、投影误差用于不同决策。3D 包围球/误差场的教学证明不直接等于某版 UE 的实际函数实现。关键依据见 technical-notes.md。
+
+## 06 · 总结与衔接
+
+| Shot | 视觉动作 | 核心信息 / 验收 |
+| --- | --- | --- |
+| 06-01 | 从 Mesh → Triangle Graph → Fine Clusters → Group → Coarse → DAG → Error/Bounds 的同一对象快速连贯回放 | 每一个图形都复用前文对象，不跳 PPT 总结页 |
+| 06-02 | 快速回到 05-12 的最终状态：Camera 位于近处、DAG Cut 已更新；只把 hierarchy/BVH 的线框作为**第二期问题的暗示**，不重复演示一次 LOD 切换 | 第一期开到为什么使用 Error 就闭环；第二期从 GPU 怎么找到/处理候选 Group 开始，屏幕不出现固定 Logo |
+
+## 里程碑（**尚未实施**）
+
+1. Script lock：评审本 PR 的技术顺序、旁白与镜头，修订到 V1。
+2. Animatic：只用几何与简易配音占位，验证节奏和画面可读性。
+3. Scene implementation：先开发第三、四章可复用组件，再做二、五章，最后做开头与结尾。
+4. Engineering verification：把教学几何替换为可导出的高质量数据，重要具体实现逐条对照 UE 源码。
+5. Final render：统一排版、配音、技术字幕、1080p/60fps（帧率在性能评估后决定）。
+
+本 PR 里仅有文字；不要把上述清单理解成已经有成片或可运行的新场景。
