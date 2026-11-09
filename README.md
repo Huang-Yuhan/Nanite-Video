@@ -30,6 +30,34 @@ npm run render:episode01          # out/episode-01-workprint.mp4
 
 ---
 
+## 第二章工程原型：Triangle Clustering
+
+本 PR 在第一章 `feat/episode-01-chapter-01` 的工作版时间轴后追加 **Chapter 02**。第一章与第二章使用**相同的三角形顶点数据**，不切换到无关的演示资产。
+
+- 从第一章岩壁的细节区域截取一块 **4×4 Quad = 32 Triangle** 的真实子网格。
+- 根据共享 Mesh Edge 生成 Triangle Adjacency Graph：**32 Nodes / 40 undirected Edges**，每条 Graph Edge 都对应一条真实共享三角形边。
+- 对比相同 **4 Clusters × 8 Triangles** 的两个 Partition：按索引步进分组（可能离散）与基于 2×2 Quads 的连续分组；被切断的邻接边数量由图自动统计。
+- 表示从 Triangle 缩为 Graph Node，图边生长，分区选择，最后回到同一片三角形几何。
+- 用 `validate:chapter02` 核实节点数、边数、无重复/非流形边、同一 Triangle Budget、连续组连通性以及跨 Cluster Edge Cut 的减少。
+
+这些 Partition 是**用于阐释目标的教学构造**，不是 METIS 输出或 Nanite UE 5.8.4 的实际 Builder 划分。本阶段的 Cluster 大小是 8 Triangles，而不是声称 UE Cluster 固定为 8。
+
+```bash
+git fetch origin
+git switch --track origin/feat/episode-01-chapter-02
+npm install
+npm run studio                       # Episode01Workprint: 第一章 + 第二章
+npm run validate:chapter02
+npm run check
+npm run still:episode01-graph        # out/episode-01-graph.png
+npm run still:episode01-partition    # out/episode-01-partition.png
+npm run render:episode01             # out/episode-01-workprint.mp4
+```
+
+第二章目前使用临时 animatic 时长，正式视频无固定片长；本 PR **基于第一章 PR #4 的分支**，合并时应先落地 PR #4，再调整本 PR 的 base。
+
+---
+
 ## 25 秒 Demo：从 Cluster 到 DAG
 
 这版借鉴 3Blue1Brown 的可视化方法：**几何是画面主体，图形通过连续变化推导算法**；不再使用固定左右分栏、HUD 仪表盘或 PPT 式流程列表。
