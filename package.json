@@ -1,13 +1,17 @@
 {
   "name": "nanite-video",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "scripts": {
     "studio": "remotion studio src/index.ts",
     "render": "remotion render src/index.ts ClusterDagDemo out/cluster-dag-demo.mp4",
     "still": "remotion still src/index.ts ClusterDagDemo out/cover.png --frame=675",
     "check": "tsc --noEmit",
-    "validate:geometry": "node --experimental-strip-types src/demoData.ts"
+    "validate:geometry": "node --experimental-strip-types src/demoData.ts",
+    "render:episode01": "remotion render src/index.ts Episode01Workprint out/episode-01-workprint.mp4",
+    "still:episode01": "remotion still src/index.ts Episode01Workprint out/episode-01-clusters.png --frame=990",
+    "still:episode01-local": "remotion still src/index.ts Episode01Workprint out/episode-01-local-lod.png --frame=810",
+    "validate:episode01": "node --experimental-strip-types src/episode01/ch01Geometry.ts"
   },
   "dependencies": {
     "react": "^19.0.0",
