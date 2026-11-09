@@ -47,8 +47,8 @@ export function projectLocal(p:Vec3,{
   const perspective=6.5/(6.5-dep*0.24);
   return {x:cx+xx*scale*perspective,y:cy-yy*scale*perspective};
 }
-export const makeView=(scale=580,cx=960,cy=515,t=0):LocalCamera=>({
-  cx,cy,scale,yaw:0.18+Math.sin(t*0.08)*0.06,pitch:-0.30,
+export const makeView=(scale=580,cx=960,cy=515,_t=0):LocalCamera=>({
+  cx,cy,scale,yaw:0.18,pitch:-0.30,
 });
 const overrideVertex=(id:number,moving?:{
   from:number,to:number,progress:number,
