@@ -94,20 +94,11 @@ export function validateEpisode01Geometry(): void {
       wallMeshes.local.triCount !== 456) {
     throw new Error('Triangle counts must match chapter narration');
   }
-  const expectedOuter = new Set<string>();
-  // The same 10x strip segmentation and 12x row segmentation are kept on
-  // the entire outer boundary in every LOD.
-  for (let strip = 0; strip < STRIPS; strip++) {
-    const bottomA = point(strip, 0, 1, 0);
-    const bottomB = point(strip, 1, 1, 0);
-    const topA = point(strip, 0, 1, ROWS);
-    const topB = point(strip, 1, 1, ROWS);
-    expectedOuter.add(edgeKey(bottomA, bottomB));
-    expectedOuter.add(edgeKey(topA, topB));
-  }
+  const expectedSideEdges = new Set<string>();
   for (let row = 0; row < ROWS; row++) {
-    expectedOuter.add(edgeKey(point(0, 0, 1, row), point(0, 0, 1, row + 1)));
-    expectedOuter.add(edgeKey(point(STRIPS - 1, 1, 1, row), point(STRIPS - 1, 1, 1, row + 1)));
+    expectedSideEdges.add(edgeKey(point(0, 0, 1, row), point(0, 0, 1, row + 1)));
+    expectedSideEdges.add(edgeKey(point(STRIPS - 1, 1, 1, row),
+      point(STRIPS - 1, 1, 1, row + 1)));
   }
 
   for (const mesh of Object.values(wallMeshes)) {
@@ -126,9 +117,43 @@ export function validateEpisode01Geometry(): void {
     if ([...edgeCount.values()].some((count) => count > 2)) {
       throw new Error('Non-manifold incidence in ' + mesh.mode);
     }
-    if (boundary.size !== expectedOuter.size ||
-        [...boundary].some((key) => !expectedOuter.has(key))) {
-      throw new Error('LOD seam or outer boundary mismatch for ' + mesh.mode);
+    // The exterior is the same *geometric contour* in every LOD.
+    // Fine strips subdivide the flat upper/lower outer edges more densely,
+    // so they need not have exactly the same boundary edge indices.
+    const sideEdges = new Set<string>();
+    const topEdges: Array<[number, number]> = [];
+    const bottomEdges: Array<[number, number]> = [];
+    for (const edge of boundary) {
+      const [av, bv] = edge.split('|');
+      const a = av.split(':').map(Number);
+      const b = bv.split(':').map(Number);
+      const eq = (x: number, y: number) => Math.abs(x-y) < 1e-6;
+      if (eq(a[0], b[0]) &&
+          (eq(a[0], WORLD_LEFT) || eq(a[0], WORLD_RIGHT))) {
+        sideEdges.add(edge);
+      } else if (eq(a[1], b[1]) &&
+          (eq(a[1], WORLD_TOP) || eq(a[1], WORLD_BOTTOM))) {
+        if (!eq(a[2], 0) || !eq(b[2], 0)) {
+          throw new Error('Upper/lower boundary must remain flat');
+        }
+        const segment: [number, number] = [Math.min(a[0], b[0]), Math.max(a[0], b[0])];
+        (eq(a[1], WORLD_TOP) ? topEdges : bottomEdges).push(segment);
+      } else {
+        throw new Error('Interior seam exposed in ' + mesh.mode);
+      }
+    }
+    if (sideEdges.size !== expectedSideEdges.size ||
+        [...sideEdges].some((key) => !expectedSideEdges.has(key))) {
+      throw new Error('Side boundary mismatch for ' + mesh.mode);
+    }
+    for (const segments of [topEdges, bottomEdges]) {
+      segments.sort((a,b) => a[0] - b[0]);
+      let end = WORLD_LEFT;
+      for (const [x0, x1] of segments) {
+        if (!eq(x0, end) || x1 <= x0) throw new Error('Contour gap or overlap');
+        end = x1;
+      }
+      if (!eq(end, WORLD_RIGHT)) throw new Error('Incomplete outer contour');
     }
     for (let strip = 0; strip < STRIPS; strip++) {
       const expected = getStripDetail(strip, mesh.mode) === 'fine' ? 96 : 24;
