@@ -1,4 +1,4 @@
-# Episode 01 · Storyboard V0.4（UE 5.8.4 源码核对）
+# Episode 01 · Storyboard V0.5（Camera ↔ DAG Cut 联动）
 
 > **视觉标准**：沿用已有的 ClusterDagDemo 方向——3Blue1Brown 式数学/几何动画、深色背景、克制配色、连续 Morph、必要时短暂显示术语与公式。**移除固定左上角标识和 PPT 侧栏**。
 >
@@ -58,6 +58,14 @@
 
 ## 05 · Geometric Error 与 Bounds（不设时长，以动画理解为准）
 
+### 联动动画约束
+
+本章最后采用**用户确认的左右同步构图**：左侧可见 Camera 与 3D Mesh，右侧可见 DAG、所选节点与 Cut。双视窗仅在该实验中出现，前面仍使用连续几何演变，不退化为固定 PPT 布局。画面必须明确指出右侧是 **LOD dependency DAG（不是 BVH）**；BVH/Hierarchy 的数据结构、剔除和遍历留到第二期。
+
+Cut 并不是沿一条固定水平线随镜头上下移动，而是满足 Group 依赖、覆盖正确性的**选中 Cluster 集合**；可以用随选中节点变化的曲线作为图形化提示。只有目标 Group 细化，不让全部组同时跟随相机跳级。
+
+
+
 | Shot | 视觉动作 | 核心信息 / 验收 |
 | --- | --- | --- |
 | 05-01 | 局部平面出现，显示候选顶点到各平面的平方距离累积；转化为基础 QEM 成本曲面 | 区分优化用的 cost 与长度、屏幕像素；讲清 QEM 的直觉而非演完整求解器 |
@@ -68,7 +76,11 @@
 | 05-06 | 反例：e_parent > e_child，但由于错误放置的非包含 Bounds，得到 E_screen(parent) < E_screen(child) | 强调「标量单调不够」。错误的 Bounds 必须明确标记为反例，不能冒充真实构建输出 |
 | 05-07 | `Group.LODBounds` 是子 Cluster `LODBounds` 的包围球并集，生成的 coarse Clusters 复制该误差球；Camera 绕行并观察最近点距离 | 必须标注 LODBounds（误差投影球）而不是 SphereBounds（几何包围球）；公式 E≈K·e/max(d(camera,LODBounds),ε) 仅为教学模型，运行时实现另核实 |
 | 05-08 | 阈值水平线穿过单调误差曲线，DAG 中合法 Cut 同步亮起；不展示完整 GPU 算法 | 一条根至叶路径只有一次有效阈值过渡；Group 依赖依然成立，具体 Runtime 放第二期 |
-| 05-09 | 同一个几何误差下，相机远离，屏幕投影误差逐步缩小；用简化投影公式结尾 | 强调投影角度、包围球内部和实例变换需要运行时修正；结束时衔接 Camera |
+| 05-09 | 公式与两个误差球渐渐退至背景；同一份模型和 Camera 左移，DAG 节点组平滑移动到右侧，形成仅用于本次推导的**临时双视窗** | 不做常驻 PPT 侧栏；从既有几何/DAG 连续运动生成两个关联视图；Cluster ID、颜色对应一致 |
+| 05-10 | **远景**：左侧 Camera 远离目标 Group，显示两块 coarse 几何；右侧 DAG 两个 coarse 节点同时被 Cut 选中，其他 Group 的节点保持选择不变 | 教学阈值 1px；教学误差 0.3px（非 UE 实测），显示同一 Group 的 coarse 节点作为完整集合 |
+| 05-11 | **接近**：Camera 连续前进；coarse 集合的 projected error 数字由 0.3px 平滑增加并越过 1px；右侧错误条带/阈值线联动 | Camera 距离、误差与 DAG 高亮必须来自同一套教学模型；阈值穿越前保持 coarse 选择，不提前切换 |
+| 05-12 | **Group 级替换**：右侧两枚 coarse 节点同时取消选择，四枚 fine 节点同时被选中，Cut 发生局部变化；左侧模型对应区域离散变细，相邻 Group 不变 | 用合法替换数据驱动：2 coarse ↔ 4 fine，不能出现混选或几何重叠；真实运行时是离散 LOD 选择，教学动画可用瞬态高亮，但不可把 Morph 说成引擎实时网格插值 |
+| 05-13 | Camera 停在近景，Cut 保持当前状态；从左右关联视图收束回 DAG 全图，随后浮现一层淡淡的 runtime hierarchy 轮廓作为下一期悬念 | 这里只讲「为什么该选」，不展示或断言具体 GPU BVH Traversal 算法；同一几何资产在第二期继续使用 |
 
 > 技术注释：QEM 代价、简化阶段估计的误差、累计误差、投影误差用于不同决策。3D 包围球/误差场的教学证明不直接等于某版 UE 的实际函数实现。关键依据见 technical-notes.md。
 
@@ -77,7 +89,7 @@
 | Shot | 视觉动作 | 核心信息 / 验收 |
 | --- | --- | --- |
 | 06-01 | 从 Mesh → Triangle Graph → Fine Clusters → Group → Coarse → DAG → Error/Bounds 的同一对象快速连贯回放 | 每一个图形都复用前文对象，不跳 PPT 总结页 |
-| 06-02 | DAG 缩入远景、Camera 入画、某局部细节由 coarse 变为 fine；在完整运行时演示前截断 | 第一帧可直接作为第二期开场，屏幕上不出现固定 Logo |
+| 06-02 | 快速回到 05-12 的最终状态：Camera 位于近处、DAG Cut 已更新；只把 hierarchy/BVH 的线框作为**第二期问题的暗示**，不重复演示一次 LOD 切换 | 第一期开到为什么使用 Error 就闭环；第二期从 GPU 怎么找到/处理候选 Group 开始，屏幕不出现固定 Logo |
 
 ## 里程碑（**尚未实施**）
 
