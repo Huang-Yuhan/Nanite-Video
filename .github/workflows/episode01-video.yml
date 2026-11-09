@@ -1,0 +1,35 @@
+name: Episode 01 full visual workprint
+
+on:
+  pull_request:
+    paths:
+      - 'src/episode01/**'
+      - 'src/root.tsx'
+      - 'package.json'
+      - '.github/workflows/episode01-video.yml'
+  workflow_dispatch:
+
+jobs:
+  workprint-video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: TypeScript
+        run: npm run check
+      - name: Verify all mesh / graph / hierarchy invariants
+        run: npm run validate:all
+      - name: Render full six-chapter video (960x540 preview)
+        run: npm run render:episode01-preview
+      - name: Upload complete Episode 01 MP4
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: episode-01-complete-workprint-video
+          path: out/episode-01-complete-preview.mp4
+          retention-days: 14
