@@ -19,7 +19,7 @@ const GOLD = '#ffcf70';
 const SOFT = '#8fa5bb';
 const CYAN = '#59d3e8';
 const GROUPS = ['#5bb8ed', '#70cc9e', '#f2ad62', '#b794ef'];
-const FONT = "'Inter', 'Noto Sans SC', 'Microsoft YaHei', sans-serif";
+const FONT = "'Noto Sans CJK SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif";
 const MONO = "'JetBrains Mono', 'Cascadia Code', monospace";
 
 type P2 = {x: number; y: number};
@@ -57,7 +57,7 @@ const sourceCenter = sourceProject(patchCenter);
 function patchProject(p: Vec3, zoomProgress: number): P2 {
   const source = sourceProject(p);
   const blownUp = {
-    x: 960 + (source.x - sourceCenter.x) * 4.15,
+    x: 960 + (source.x - sourceCenter.x) * 3.2,
     y: 495 + (source.y - sourceCenter.y) * 4.15,
   };
   return {
