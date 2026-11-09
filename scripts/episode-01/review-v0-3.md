@@ -85,3 +85,17 @@
 逐条证据及私有源文件定位：见 [ue-5.8.4-source-review.md](./ue-5.8.4-source-review.md)。
 
 **未核实**：UE 5.8.4 Runtime Shader 中误差投影的精确式、近距与透视修正、层级数据编码；不要将教学用误差公式说成实际 GPU 实现。下一阶段技术审查请从这些问题继续。
+
+## V0.5 决策：第五章末尾加入概念性 Runtime LOD Cut 实验
+
+用户确认用一段**左右联动**的动画回答 Error 的用途：
+- 左：Camera 由远至近，局部 coarse → fine，其他 Group 无须随之整体改变；
+- 右：**Cluster DAG** 的合法选中集合局部变化；不是 BVH；
+- 先显示连续变化的 projected error，跨过**教学**误差阈值后再执行一组离散的 2 coarse → 4 fine 替换；
+- 明确 Cut 是符合依赖的 Cluster 选择集合，不能画成随意抽取子集；不要把教学上流畅的高亮/形变解释为运行时顶点插值；
+- 第二期改为侧重 GPU 如何高效求出这类选择并完成可见性剔除与 Rasterization，第一期不提前讲 GPU 具体实现。
+- 第六章不再声称“所有内容都只发生在 Offline Build”；总结构建数据如何实际参与 Runtime 的概念性选择。
+
+文档变更：`narration.md` 第五章新增演示旁白；`storyboard.md` 第五章由 9 镜头增至 13 镜头，全片 **36 个镜头**；`outline.md` 和 `technical-notes.md` 更新边界与数据要求。仍**不设总时长**，PR 仍为**纯文档**。
+
+待验证：UE 5.8.4 GPU screen-space error、阈值来源与 hierarchy traversal。这段先按教学模型制作，不做特定版本行为的实测主张。
