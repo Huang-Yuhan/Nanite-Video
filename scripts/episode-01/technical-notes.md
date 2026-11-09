@@ -1,11 +1,17 @@
 # Episode 01 · Technical Notes / 事实核验清单
 
-> 状态：技术评审稿。下列「经典 Nanite」主要指 SIGGRAPH 2021 公开方案，不等价于确认了 UE 5.7.4 中所有具体类型、常量及函数行为。
+> 状态：技术评审稿。下列「经典 Nanite」主要指 SIGGRAPH 2021 公开方案，不等价于确认了 UE 5.8.4 中所有具体类型、常量及函数行为。
+
+## 当前源码基准
+
+已核对用户私有 fork `Huang-Yuhan/UnrealEngine` 的 `release` 分支 `Engine/Build/Build.version = 5.8.4`。具体原码行号和控制流程见 [ue-5.8.4-source-review.md](./ue-5.8.4-source-review.md)。
+
+这里不能把 5.6.1 旧字段套到新版本：5.8.4 `FClusterGroup` 保存 `ParentLODError`，`ReduceGroup` 通过 child `LODBounds` 生成 `Group.LODBounds`，新 coarse parents 统一复制这两个字段。
 
 ## 主要公开来源
 
 1. Brian Karis, Rune Stubbe, Graham Wihlidal, *Nanite: A Deep Dive*, SIGGRAPH 2021 Advances in Real-Time Rendering in Games，完整幻灯片与演讲注释： https://advances.realtimerendering.com/s2021/Karis_Nanite_SIGGRAPH_Advances_2021_final.pdf 。重点阅读标题为 “Build operations”, “DAG”, “DAG: Which clusters to group?”, “Initial clustering”, “Simplification”, “Error metric”, “LOD selection in parallel” 的部分。
-2. Epic 官方 *Nanite Virtualized Geometry Overview*： https://dev.epicgames.com/documentation/en-us/unreal-engine/nanite-virtualized-geometry-in-unreal-engine 。供系统定位与产品使用范围参照；网页可能显示比本项目计划的 UE 5.7.4 更新的版本。
+2. Epic 官方 *Nanite Virtualized Geometry Overview*： https://dev.epicgames.com/documentation/en-us/unreal-engine/nanite-virtualized-geometry-in-unreal-engine 。供系统定位与产品使用范围参照；网页可能显示比本项目计划的 UE 5.8.4 更新的版本。
 3. Epic 官方 *Nanite Technical Details*： https://dev.epicgames.com/documentation/en-us/unreal-engine/nanite-technical-details 。用于可视化功能及运行时说明，不能代替特定版本的 C++ 源码核对。
 4. Michael Garland and Paul S. Heckbert, *Surface Simplification Using Quadric Error Metrics*, SIGGRAPH 1997： https://www.cs.cmu.edu/~garland/Papers/quadrics.pdf 。用于第五章基本 QEM 公式背景；不要从基础 QEM 公式推断所有 Nanite 的最终误差实现。
 
@@ -47,7 +53,7 @@
 
 SIGGRAPH 2021 *Nanite: A Deep Dive* 的 “LOD selection” / “LOD selection in parallel” 段落（PDF 讲义可搜索这些标题）：
 
-- 同一个 Cluster Group 的成员应使用**相同的 unioned error value 与 sphere bounds**，确保在并行评估时作出相同的 LOD 决策。
+- 经典演讲强调同一批需要协同替换的 Cluster 应有一致的 LOD 判断数据。**5.8.4 源码更准确的具体描述**：`Group` 汇总 fine children 的 `LODError / LODBounds`，而同一次简化生成的 **coarse parents** 共享 `Group.ParentLODError` 和 `Group.LODBounds`；fine children 原值不必全都相同。
 - 并行选择的直觉规则是：本 Cluster 投影误差足够小、但更粗的替代表示投影误差太大。
 - 希望沿 DAG 依赖路径的投影误差单调，使每条路径上阈值从不合格到合格只转变一次。
 - 构建时对父级的存储 error 与用于投影的 bounds 做保守修正，保证父级的 view error 不小于子级。
@@ -74,7 +80,7 @@ E_parent(V) >= E_child(V)   for every camera position V
 
 这条性质由误差标量与空间 Bounds **共同**保证。仅有 `e_parent >= e_child` 不足以保证屏幕误差的顺序，因为两个不包含的球距离 Camera 可能差异极大。
 
-**边界条件**：近裁剪、相机位于球内、斜角投影的畸变处理和非均匀实例缩放可能使真实投影函数更加复杂。上述推导是教学近似，**不能宣称与 UE 5.7.4 的完整运行时误差代码等价**。需要确认实际投影修正同样保持单调（演讲特别提醒这一点）。
+**边界条件**：近裁剪、相机位于球内、斜角投影的畸变处理和非均匀实例缩放可能使真实投影函数更加复杂。上述推导是教学近似，**不能宣称与 UE 5.8.4 的完整运行时误差代码等价**。需要确认实际投影修正同样保持单调（演讲特别提醒这一点）。
 
 ### 叙事应有的先后顺序
 
@@ -86,24 +92,24 @@ E_parent(V) >= E_child(V)   for every camera position V
 6. 把父误差与包围球都做成保守包含关系；用数学证明简化模型下的屏幕误差单调。
 7. 使用阈值线引出局部判断，保留 Group 级合法 Cut 约束，把 GPU 具体实现留到第二期。
 
-### UE 5.7.4 源码待验证
+### UE 5.8.4 源码核对状态（构建阶段已确认，Runtime 仍未完成）
 
-- Error / Sphere 哪些字段存于 Cluster，哪些来自 Cluster Group 或父级依赖？同一 Group 共享数据是怎样序列化/使用的？
-- Error 的累积和 bounds 合并/修正是否分离，以及每一步与画面中简化示例的对应关系。
+- **Builder 已确认**：Cluster 存 `LODError`、`LODBounds`、`SphereBounds`；Group 存 `ParentLODError`、`LODBounds`，并把这两者赋给生成的 coarse parents。**Runtime 序列化和消费细节仍待确认。**
+- **Builder 已确认**：`ParentLODError = max(max(child errors), SimplifyError)`，`Group.LODBounds` 取各 child `LODBounds` 的 union；若有 instance，先变换球心并按最大尺度缩放。需要核对并行 Runtime 选择与镜头叙事的全部对应。
 - 运行时 `ViewError` 最不利点计算、近距离修正、实例变换规则；检查所有修正步骤是否仍保证单调性。
 - 若版本内使用了不同投影公式，应保留原理的教学推导，再将实际公式作为实现补充。
 
 
-## 与 UE 5.7.4 源码核对的 TODO（未声称完成）
+## UE 5.8.4 源码核对任务状态（部分已完成）
 
 | 优先级 | 待核对问题 | 剧本影响 |
 | --- | --- | --- |
-| P0 | DagBuilder 中 Grouping 与层级依赖的真实实现：Group ID、child-parent 关系如何记录？ | 第四章的图示和少量 C++ 结构截图 |
-| P0 | Cluster 三角形预算、Group size、终止条件在当前平台/版本的常量及例外 | 第二、三章旁白中避免硬编码 |
-| P0 | 简化器如何锁定边界；哪些几何、属性与误差统计实际输出 | 第三、五章准确性 |
-| P0 | Error 与 bounds 在层级上的保守传播 / fix-up 如何保证 projected monotonicity | 第五章的关键动画 |
-| P1 | Initial Triangle Clustering 的具体图构建与分区算法，是否继续使用 METIS/改造接口 | 第二章实现贴近度 |
-| P1 | DAG 与 runtime hierarchy/BVH 的构建关系、序列化字段 | 第一、二期衔接 |
+| P0 ✓ | 已核对 `ClusterDAG.cpp` 中 Group、`FClusterRef`、`GeneratingGroupIndex` 的构建关系；后续可细审 DAG 结构画法 | 第四章有源码依据，参考专门的源码审查文档 |
+| P0（部分） | `FCluster::ClusterSize = 128` 已核对；Group 大小、特殊 Curve/Voxel 分支与终止条件仍待逐项核查 | 第二、三章主讲 Triangle Path |
+| P0 ✓（Triangle Path） | `SimplifyTriangles` 使用 `ExternalEdges` 和 `LockPosition`，返回 `sqrt(MaxErrorSqr) * InvScale` | 第三、五章已具备实际代码依据 |
+| P0（Builder 已核对） | `ReduceGroup` 对 child Error 取 max、对 child `LODBounds` 取 union，新 coarse parents 共享值；GPU 投影函数仍待核验 | 第五章保留教学公式与实现差异提示 |
+| P1 | Initial Triangle Clustering / Grouping 参数与辅助 locality 权重仍需完整核查；Group Graph 已见 sibling-related 权重 | 第二、三章内容可进一步精确 |
+| P1 | Builder DAG 已找到；Runtime hierarchy/BVH 的构建及序列化字段仍待核查 | 第一、二期衔接 |
 | P2 | 数据压缩、Streaming、Pages、material ranges 的关联结构 | 第二期，不在本 PR 细讲 |
 
 ## 表述风险与建议修订
@@ -113,8 +119,8 @@ E_parent(V) >= E_child(V)   for every camera position V
 - 不把 Group boundary 解释为完全没法动的所有边：只在**该次 Group 简化操作**的边界约束意义下使用「保持不变」。
 - 不宣称「QEM 保证真实视觉无损」：误差是启发式估计，法线、UV、材质、剪影等视觉影响仍有区别。
 - 不说「Hierarchy 单调后整个 DAG 就可以直接当 BVH 做可见性裁剪」：两个职责不相同。
-- 代码截图中若出现具体 UE 5.7.4 文件路径、符号，必须在实际源码读取后填入。本文档不编造代码行数、函数名或精确常量。
+- 代码截图中若出现具体 UE 5.8.4 文件路径、符号，必须在实际源码读取后填入。本文档不编造代码行数、函数名或精确常量。
 
 ## 技术验收门槛
 
-正式上线前技术评审需要看到：一张真实的 fine/coarse 同边界示意、一条保守有效的多层误差/Bounds 演示、一个对照解释「Clustering 和 Grouping 是两次不同粒度 Partitioning」的镜头、以及任何 UE 5.7.4 具体实现引用的源码证据。
+正式上线前技术评审需要看到：一张真实的 fine/coarse 同边界示意、一条保守有效的多层误差/Bounds 演示、一个对照解释「Clustering 和 Grouping 是两次不同粒度 Partitioning」的镜头、以及任何 UE 5.8.4 具体实现引用的源码证据。
