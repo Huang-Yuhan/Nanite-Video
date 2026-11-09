@@ -45,6 +45,10 @@ jobs:
         run: npm run validate:hierarchy
       - name: Render Group simplification scene
         run: npm run still:episode01-group
+      - name: Validate multilevel DAG cut invariants
+        run: npm run validate:dag-cut
+      - name: Render multilevel DAG cut
+        run: npm run still:episode01-multilevel-dag
       - name: Render DAG scene
         run: npm run still:episode01-dag
       - name: Render Error and Bounds scene
@@ -67,6 +71,7 @@ jobs:
             out/episode-01-partition.png
             out/episode-01-group.png
             out/episode-01-dag.png
+            out/episode-01-multilevel-dag.png
             out/episode-01-error.png
             out/episode-01-runtime.png
           retention-days: 7
