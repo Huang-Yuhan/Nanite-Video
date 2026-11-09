@@ -3,7 +3,7 @@
  * Reuses the validated 4-fine / 2-coarse boundary-preserving topology.
  * Both displays consume a single selected-cluster set at every frame.
  */
-import {coarse, coarseCluster, fine, fineCluster, perimeter, positions, type Tri, type Vec3} from './demoData.ts';
+import {coarse, coarseCluster, fine, fineCluster, positions, type Tri, type Vec3} from './demoData.ts';
 
 export const RUNTIME_FPS = 30;
 export const RUNTIME_DURATION_FRAMES = 540;
@@ -96,7 +96,12 @@ export const getRuntimeFrame = (frame: number): RuntimeFrame => {
 };
 
 export const patchVertices = (patch: Patch) =>
-  positions.map(([x, y, z]): Vec3 => [x + patch.originX, y, z * patch.amplitude]);
+  positions.map(([x, y, z]): Vec3 => [
+    x + patch.originX, y,
+    // Trig-generated edge values may be ~1e-16 instead of exact zero.
+    // Canonicalize every boundary position for exact cross-patch stitching.
+    Math.abs(x) === 2 || Math.abs(y) === 2 ? 0 : z * patch.amplitude,
+  ]);
 
 export const patchTriangles = (detail: Detail): readonly Tri[] => detail === 'fine' ? fine : coarse;
 
@@ -129,11 +134,12 @@ export function validateRuntimeCut(): void {
     throw new Error('Unexpected fine/coarse topology');
   }
 
-  // Both patches meet on x=0; the original perimeter has z=0.
-  for (const [x, y, z] of perimeter) {
-    if (x !== 2) continue;
-    const seamA = [x + PATCHES[0].originX, y, z * PATCHES[0].amplitude];
-    const seamB = [x - 4 + PATCHES[1].originX, y, z * PATCHES[1].amplitude];
+  // Adjacent patches meet on x=0. Compare actual *transformed* positions.
+  const vertsA = patchVertices(PATCHES[0]);
+  const vertsB = patchVertices(PATCHES[1]);
+  for (let row = 0; row < 5; row++) {
+    const seamA = vertsA[row * 5 + 4];
+    const seamB = vertsB[row * 5];
     if (seamA.some((v, i) => v !== seamB[i])) throw new Error('Patch seam mismatch');
   }
 
