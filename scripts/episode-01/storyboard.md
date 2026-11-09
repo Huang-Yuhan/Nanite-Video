@@ -1,4 +1,4 @@
-# Episode 01 · Storyboard V0.3（镜头顺序版）
+# Episode 01 · Storyboard V0.4（UE 5.8.4 源码核对）
 
 > **视觉标准**：沿用已有的 ClusterDagDemo 方向——3Blue1Brown 式数学/几何动画、深色背景、克制配色、连续 Morph、必要时短暂显示术语与公式。**移除固定左上角标识和 PPT 侧栏**。
 >
@@ -11,7 +11,7 @@
 - 从 Mesh → Graph：三角形向重心缩小，邻接关系的共享边自然变成连接线；返回几何时反向 Morph。
 - 从 fine → coarse：按真实的离散拓扑状态变化演示 Edge Collapse；**不要靠淡入淡出冒充真实简化操作**。几何展示可以适度夸张并在设计说明中注明教学模型。
 - 精度与计数器必须由数据计算（triangles、boundary edges、nodes、error），不能只在屏幕上改硬编码文字。
-- 源数据分三级：A 教学构造但拓扑有效；B 离线自研简化器实际输出；C UE 5.7.4 实际数据导出。样片 A 可用于讲直觉，C 用于特定引擎实现断言。
+- 源数据分三级：A 教学构造但拓扑有效；B 离线自研简化器实际输出；C UE 5.8.4 实际数据导出。样片 A 可用于讲直觉，C 用于特定引擎实现断言。
 - 非必要时不要出现大段字幕；声音解释应与可见操作同帧发生。
 - **不预设时长。** 分镜按叙事顺序编排，具体镜头长度通过 animatic 测试；第三到第五章需要较多算法动画停顿，优先保证观众看得懂。
 
@@ -63,10 +63,10 @@
 | 05-01 | 局部平面出现，显示候选顶点到各平面的平方距离累积；转化为基础 QEM 成本曲面 | 区分优化用的 cost 与长度、屏幕像素；讲清 QEM 的直觉而非演完整求解器 |
 | 05-02 | 两条候选 Edge Collapse 依代价高亮；顶点移到真实候选位置并更新拓扑 | 新位置不默认是中点；动画来源为可验证的简化数据 |
 | 05-03 | 前后两份几何重叠，高亮不同部位的偏差；显示「本次引入的 Error」但不直接使用 QEM cost 充当长度 | 区分本次误差、累计误差与投影误差 |
-| 05-04 | 对同一 Group 的成员分别显示误差/小球；随后合并成**共享 Group Error + Union Bounds**，成员同步响应同一阈值 | 组级一致决策条件，不能只演示每个 Cluster 各算各的 |
-| 05-05 | 三轮简化逐级累积误差，用教具数据展示保守传播 | 累计误差不是任意多层 QEM cost 相加；实际 UE 数值传播待源码核实 |
+| 05-04 | 四个 fine Clusters 各自展示独立的 `LODError` 与 `LODBounds`；构建 Group 的 union LODBounds，生成两枚 coarse Clusters，两者都使用**相同父级 `LODError` / `LODBounds`** | 精确对应 UE 5.8.4 `ReduceGroup`：Group 汇总 child，生成的 parents 共享数据；不误画 fine children 原来就全相同 |
+| 05-05 | 从子级误差、`SimplifyError` 两组值产生父级 `ParentLODError = Max(child errors, SimplifyError)`；沿多个层级反复执行 | UE 5.8.4 `ReduceGroup` 已核实该 max 关系，不是把 QEM cost 直接相加；实例变换时还需乘尺度 |
 | 05-06 | 反例：e_parent > e_child，但由于错误放置的非包含 Bounds，得到 E_screen(parent) < E_screen(child) | 强调「标量单调不够」。错误的 Bounds 必须明确标记为反例，不能冒充真实构建输出 |
-| 05-07 | 父球逐渐扩张并包含子球，镜头绕行，分别显示最近点距离与标量；两条 screen-error 曲线始终满足单调 | 教学公式 E ≈ K·e/max(d(camera,sphere),ε)；解释 e_parent≥e_child 和 B_parent⊇B_child 如何**在简化模型下**推出 E_parent≥E_child |
+| 05-07 | `Group.LODBounds` 是子 Cluster `LODBounds` 的包围球并集，生成的 coarse Clusters 复制该误差球；Camera 绕行并观察最近点距离 | 必须标注 LODBounds（误差投影球）而不是 SphereBounds（几何包围球）；公式 E≈K·e/max(d(camera,LODBounds),ε) 仅为教学模型，运行时实现另核实 |
 | 05-08 | 阈值水平线穿过单调误差曲线，DAG 中合法 Cut 同步亮起；不展示完整 GPU 算法 | 一条根至叶路径只有一次有效阈值过渡；Group 依赖依然成立，具体 Runtime 放第二期 |
 | 05-09 | 同一个几何误差下，相机远离，屏幕投影误差逐步缩小；用简化投影公式结尾 | 强调投影角度、包围球内部和实例变换需要运行时修正；结束时衔接 Camera |
 
