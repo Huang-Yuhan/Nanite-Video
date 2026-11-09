@@ -100,6 +100,30 @@ E_parent(V) >= E_child(V)   for every camera position V
 - 若版本内使用了不同投影公式，应保留原理的教学推导，再将实际公式作为实现补充。
 
 
+## 第一期开头至结尾的 Runtime 闭环（V0.5）
+
+### 已确定的展示范围
+
+- **左侧**：摄像机从远处向同一模型的局部 Group 靠近，显示 coarse 几何到 fine 几何的**离散**切换；其他 Group 可以保持 coarse。
+- **右侧**：显示**DAG 和一组满足依赖约束的被选中 Cluster**，以适当曲线强调 Cut 的当前位置。**右侧不是 Runtime BVH**。
+- 用 1px 作为**纯教学阈值**，0.3px、0.8px、1.2px 等作为**纯教学误差**。不得写成 UE 5.8.4 的默认阈值、实际测量值、或源码输出。
+- 相机到对象的距离改变时，Projected Error 连续变化；当 coarse 不再符合阈值，采用合法的**整体 Group 替换**，例如本教学实例的 `2 coarse -> 4 fine`。不能让两个 coarse 各自独立决定四个 fine 的任意子集。
+- **Cut 是合法几何集合 / 依赖边界的抽象**，不是 DAG 绘图中的一条必须水平且自动平移的物理线。Cut 可局部变化；不能因此推断其他 Group 也必须切换。
+- 视觉化时可用短暂高亮、节点光晕和网格边缘标记强调状态变化，但不要把 coarse/fine 之间的连续顶点 Morph 宣称为真实的 Runtime 逐帧插值。
+- 不在此段讲真正的 GPU traversal、群组任务调度、Occlusion Culling、Hardware/Software Rasterization；第二期专门解释“如何高效选和渲染”。
+- 镜头关系是**教学简化的 Runtime LOD Selection 直觉**，并不是已经对照 5.8.4 Shader 逐行复刻的实际 GPU 决策算法。
+
+### 教学状态与数据一致性
+
+在动画项目中推荐统一描述 `cameraPose`、`thresholdPx`、`projectedErrorByGroup`、`selectedClusterIds`、`transitionId`。每个可见的 Camera 状态必须映射到一组经校验的 selected IDs；左侧网格选择和右侧 DAG 高亮由同一份状态数据生成，不能只通过动画时刻分别硬编码。注意这只是拟定的动画数据协议，尚未提交渲染代码。
+
+验收示例：远景 `0.3px <= 1px`，完整 coarse set 被选择；接近时 `E_coarse > 1px`，完整 fine set 取代对应 coarse set；没有被替换的 Group 继续使用自己的合法选择。画面与 DAG Cut 必须一一对应。
+
+### 运行时精确实现的待核事项
+
+完整 UE 5.8.4 的 GPU 误差公式、Threshold 由哪些 CVar / View 数据决定、BVH/Hierarchy 访问与 Group 依赖判断的精确过程，以及过渡期视觉策略尚未审查。不要让本段数学近似暗示已实现上述引擎行为。
+
+
 ## UE 5.8.4 源码核对任务状态（部分已完成）
 
 | 优先级 | 待核对问题 | 剧本影响 |
