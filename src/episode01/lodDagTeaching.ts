@@ -6,8 +6,8 @@
  */
 export type DagId = `F${number}` | `M${number}` | `C${number}`;
 export type DagCut = readonly DagId[];
-export const fineIds: readonly DagId[] = Array.from({length: 8}, (_,i) => `F${i}`);
-export const middleIds: readonly DagId[] = Array.from({length: 4}, (_,i) => `M${i}`);
+export const fineIds: readonly DagId[] = Array.from({length: 8}, (_,i): DagId => `F${i}`);
+export const middleIds: readonly DagId[] = Array.from({length: 4}, (_,i): DagId => `M${i}`);
 export const coarseIds: readonly DagId[] = ['C0','C1'];
 export const dagEdges: readonly (readonly [DagId,DagId])[] = [
   ...fineIds.flatMap((fine,i) =>
