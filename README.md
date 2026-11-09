@@ -2,6 +2,34 @@
 
 **代码驱动的 Nanite 算法动画，不使用 AI 视频生成。**
 
+## 第一期正式工程：Episode01Workprint
+
+> 状态：第一章镜头的工程原型，**不是整期成片**。当前使用无配音的算法 animatic；总片长不设限制。正式的六章脚本见 `scripts/episode-01/`。
+
+`src/episode01/` 是第一期正式视频的独立代码入口：
+
+- `Episode01.tsx`：使用 Remotion `Sequence` 的工作版时间轴；逐章接入后延长时长，不渲染尚未实现的章节占位图。
+- `ch01Geometry.ts`：一张连续的、可复现的三维岩壁网格；为整块 Mesh Fine、整块 Mesh Coarse、局部 Fine + 其余 Coarse 三种表示构造真实三角形集合。
+- `Chapter01.tsx`：第一章的程序化几何动画——岩壁出场 → Wireframe → Whole-mesh LOD 切换 → 近处低精度的问题 → 局部 LOD → Cluster 概念铺垫。
+
+**本阶段只演示 LOD 的粒度问题**：10 条相连的教学网格条带，每条 Fine 96 tris、Coarse 24 tris；完整 Fine 960 tris，完整 Coarse 240 tris，局部 Fine 456 tris。每个条带的竖向边界采样保持一致，粗细混排也不产生裂缝；上下外轮廓是同一条几何线，但 Fine 的边缘分段可能更多。这里的条带仅是局部精度示例，**不是 UE 5.8.4 Graph Partition 生成的真实 Cluster**。
+
+```bash
+npm install
+npm run studio                     # 选择 Episode01Workprint
+npm run validate:episode01        # 验证 3 种网格的数量、流形边界与混排接缝
+npm run check
+npm run still:episode01-local     # out/episode-01-local-lod.png
+npm run still:episode01           # out/episode-01-clusters.png
+npm run render:episode01          # out/episode-01-workprint.mp4
+```
+
+当前 workprint 为 **1920×1080 / 30fps / 36 秒**，只是第一章 animatic 的暂定节奏，不代表整期长度。所有镜头由帧号纯函数驱动，可以任意跳转和重现。CI 只验证类型、拓扑和代表性静帧；**完整 MP4 的节奏与画面仍需要在 Studio 中评审**。
+
+保留 `ClusterDagDemo` 作为算法实验参考，不再把它当作第一期的正式视觉模板。之前的 Camera ↔ DAG Cut Draft PR #3 也不会阻塞这一阶段的开发。
+
+---
+
 ## 25 秒 Demo：从 Cluster 到 DAG
 
 这版借鉴 3Blue1Brown 的可视化方法：**几何是画面主体，图形通过连续变化推导算法**；不再使用固定左右分栏、HUD 仪表盘或 PPT 式流程列表。
