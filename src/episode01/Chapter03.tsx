@@ -29,15 +29,6 @@ export const Episode01Chapter03:React.FC=()=>{
     progress:smooth(0.08,0.86,stepPhase),
   }:undefined;
   const count=hierarchySnapshots[step].length;
-  const fineLabels=[0,1,2,3].map(id=>{
-    const ids=hierarchyFineTriangles
-      .filter((_,i)=>i%32>=0);
-    // Chapter 02's spatial quad groups are ordered in 2x2 blocks.
-    const verts=[...new Set(ids.filter((tri,i)=>
-      ((Math.floor(i/8)/2|0)*2+((Math.floor(i%8/2)/2)|0))===id)
-      .flatMap(tri=>[...tri]))];
-    return verts.length>0?verts[0]:[6,8,16,18][id];
-  });
   const c1=projectLocal(hierarchyVertices[7],view);
   const c2=projectLocal(hierarchyVertices[17],view);
   const visibleCounter=smooth(13,14.2,t)*(1-smooth(33,35,t));
