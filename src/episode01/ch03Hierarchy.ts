@@ -42,6 +42,42 @@ const firstTriangles: TriIndex[] = triangleGraphNodes.map((n)=>{
   return [ids[0], ids[1], ids[2]];
 });
 
+/**
+ * Textbook Garland–Heckbert QEM for a fixed target position.
+ * Each incident face contributes its normalized plane equation.
+ * This is for explaining the metric, NOT the weighted/attribute-aware
+ * UE 5.8.4 simplifier or the collapse selection used by this trace.
+ */
+export function quadricCostAtVertex(vertexId:number, target:Vec3):number {
+  let cost=0;
+  for(const [a,b,c] of firstTriangles) {
+    if(a!==vertexId && b!==vertexId && c!==vertexId)continue;
+    const A=sourceVertices[a],B=sourceVertices[b],C=sourceVertices[c];
+    const ab=[B[0]-A[0],B[1]-A[1],B[2]-A[2]];
+    const ac=[C[0]-A[0],C[1]-A[1],C[2]-A[2]];
+    const n=[
+      ab[1]*ac[2]-ab[2]*ac[1],
+      ab[2]*ac[0]-ab[0]*ac[2],
+      ab[0]*ac[1]-ab[1]*ac[0],
+    ];
+    const length=Math.hypot(...n);
+    if(length<1e-12)throw new Error('Degenerate input triangle');
+    const signedDistance=(
+      n[0]*(target[0]-A[0])+
+      n[1]*(target[1]-A[1])+
+      n[2]*(target[2]-A[2])
+    )/length;
+    cost+=signedDistance*signedDistance;
+  }
+  return cost;
+}
+export const firstCollapseQEM=(()=>{
+  const from=6,to=12;
+  const target=sourceVertices[to];
+  // Q(from)+Q(to), evaluated at the kept endpoint.
+  return quadricCostAtVertex(from,target)+quadricCostAtVertex(to,target);
+})();
+
 export const hierarchyVertices: readonly Vec3[] = sourceVertices;
 export const collapseSequence: readonly Collapse[] = [
   {from:6,to:12},{from:7,to:12},{from:11,to:12},{from:13,to:12},
@@ -181,7 +217,8 @@ export function validateHierarchy(){
     if(separation+sphere.radius>coarseLODBounds.radius+1e-5)
       throw new Error('Parent LOD sphere must enclose child LOD spheres');
   }
-  if(!Number.isFinite(hierarchyError.parent)||hierarchyError.parent<=0)
+  if(!Number.isFinite(firstCollapseQEM)||firstCollapseQEM<0)
+    throw new Error('Invalid demonstration QEM cost');\n  if(!Number.isFinite(hierarchyError.parent)||hierarchyError.parent<=0)
     throw new Error('No meaningful sample-based geometric error');
 }
 validateHierarchy();
