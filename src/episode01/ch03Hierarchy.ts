@@ -221,7 +221,8 @@ export function validateHierarchy(){
     if(Math.abs(quadricCostAtVertex(v,sourceVertices[v]))>1e-8)
       throw new Error('A vertex must lie on all of its incident planes');
   if(!Number.isFinite(firstCollapseQEM)||firstCollapseQEM<0)
-    throw new Error('Invalid demonstration QEM cost');\n  if(!Number.isFinite(hierarchyError.parent)||hierarchyError.parent<=0)
+    throw new Error('Invalid demonstration QEM cost');
+  if(!Number.isFinite(hierarchyError.parent)||hierarchyError.parent<=0)
     throw new Error('No meaningful sample-based geometric error');
 }
 validateHierarchy();
