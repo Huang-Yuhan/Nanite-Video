@@ -111,7 +111,7 @@ export const Episode01Chapter05:React.FC=()=>{
           <path d={'M'+p.x+' '+p.y+' L'+p.x+' '+(p.y-110)}
             stroke={COLOR.cyan} strokeWidth={3} strokeDasharray="9 8"/>
           <text x={p.x+32} y={p.y-116} fill={COLOR.cyan}
-            fontFamily={MONO} fontSize={24}>SUM OF SQUARED PLANE DISTANCES</text>
+            fontFamily={MONO} fontSize={24}>COLLAPSE PATH · QEM IS EVALUATED SEPARATELY</text>
           <text x={960} y={345} fontSize={26} fontFamily={MONO}
             textAnchor="middle" fill={COLOR.white}>
             {'QEM COST AT KEPT VERTEX = '+firstCollapseQEM.toFixed(4)}
