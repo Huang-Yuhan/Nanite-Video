@@ -1,12 +1,12 @@
 # Nanite 技术解析（一）：从 Mesh 到 Cluster DAG
 
-> 状态：脚本技术审稿 V0.3（2026-11-09）；**不是最终逐字录音稿**。本 PR 只包含文档，不修改视频代码。
+> 状态：脚本技术审稿 V0.4（2026-11-09）；**不是最终逐字录音稿**。本 PR 只包含文档，不修改视频代码。
 >
 > 受众：游戏引擎与实时渲染程序员；默认了解 Mesh、LOD、Triangle、GPU Rasterization。
 >
 > 风格：3Blue1Brown 式的连续算法可视化，以几何变换解释推导，不使用固定的 PPT 分栏或左上角 Logo。
 >
-> 目标：构建期的算法设计，不是 UE 5.7.4 逐函数源码教程。真实性以 SIGGRAPH 2021 Nanite 公开方案为基准，正式制作前核对具体 UE 版本。
+> 目标：构建期的算法设计，不是 UE 5.8.4 逐函数源码教程。真实性以 SIGGRAPH 2021 Nanite 公开方案为基准，正式制作前核对具体 UE 版本。
 
 ## 影片主问题
 
@@ -33,8 +33,9 @@
 2. **第二章只讲叶子 Cluster 划分**：每个三角形成为图节点，共享边成为图边；再解释为什么要减少 cut edges；仅用经典实现中的 128 triangles 作为背景参数，不当作版本无关的硬性定理。
 3. **第三章只解决几何构建**：分别简化会导致共享边潜在不匹配；若锁定全部 Cluster 外边界，又约束了简化；通过新一轮以 Cluster 为图节点的分区，把相邻 Cluster 合并成 Group；锁住 Group 的外轮廓，在组内简化并重新分簇。
 4. **第四章只讲层级关系**：组级替换是 4 fine ↔ 2 coarse，而不是「每个 fine 各有一个唯一 coarse parent」。重复构建让旧边界有机会变为新 Group 内部边。引出合法 Cut 的概念，但不讲完整 GPU 选择算法。
-5. **第五章以 Runtime 所需 Error/Bounds 为中心**：QEM 只是解释简化代价的入口；区分简化器内部代价、构建层级误差与投影后的屏幕误差，强调沿层级的保守单调性。
-6. **第六章总结“资产构建产出”**：聚焦分层 cluster 几何、依赖关系、误差和 bounds；压缩、Streaming、Runtime Culling、硬件/软件栅格化留到第二期。
+5. **UE 5.8.4 源码核对**：`ClusterDAG.cpp` 的 `ReduceGroup` 汇总 children 的 `LODError`、`LODBounds`，新生成的 coarse parents 共享合并后的 LOD 数据。不要误说 fine children 的 LOD Error 原本都相同。
+6. **第五章以 Runtime 所需 Error/Bounds 为中心**：QEM 只是解释简化代价的入口；区分简化器内部代价、构建层级误差与投影后的屏幕误差，强调沿层级的保守单调性。
+7. **第六章总结“资产构建产出”**：聚焦分层 cluster 几何、依赖关系、误差和 bounds；压缩、Streaming、Runtime Culling、硬件/软件栅格化留到第二期。
 
 ## 声画语言
 
@@ -66,7 +67,7 @@
 - 「为什么是 DAG」的表达是否足够精确，是否误导成每个 Cluster 可独立切换？
 - 第五章是否偏离了 Offline Build 主线？
 - 各技术步骤是否有充分的观察时间？是否存在纯粹为了控制片长而过早跳过的推导？
-- 哪些句子需要 UE 5.7.4 实际源码确认？参见 technical-notes.md。
+- 哪些句子需要 UE 5.8.4 实际源码确认？参见 technical-notes.md。
 
 ## 文档
 
