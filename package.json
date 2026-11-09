@@ -6,7 +6,8 @@
     "studio": "remotion studio src/index.ts",
     "render": "remotion render src/index.ts ClusterDagDemo out/cluster-dag-demo.mp4",
     "still": "remotion still src/index.ts ClusterDagDemo out/cover.png --frame=675",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "validate:geometry": "node --experimental-strip-types src/demoData.ts"
   },
   "dependencies": {
     "react": "^19.0.0",
