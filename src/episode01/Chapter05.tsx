@@ -82,7 +82,7 @@ function CameraErrorProof({t}: {t:number}) {
 
 export const Episode01Chapter05:React.FC=()=>{
   const t=useCurrentFrame()/CHAPTER_05_FPS;
-  const view=makeView(395,900,545,t);
+  const view=makeView(310,880,502,t);
   const first=smooth(0,1,t)*(1-smooth(15,18,t));
   const bounds=smooth(14,18,t)*(1-smooth(39,43,t));
   const childAlpha=smooth(22,25,t)*(1-smooth(35,40,t));
