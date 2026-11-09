@@ -237,12 +237,15 @@ export const RuntimeCameraDagCut: React.FC = () => {
           fontFamily={MONO} fontSize={26}>
           {'THRESHOLD ' + ERROR_THRESHOLD_PX.toFixed(1) + ' PX'}
         </text>
+        <text x="1180" y="155" fill={GOLD} fontSize={19} fontFamily={MONO}>
+          GOLD = SELECTED DAG CUT
+        </text>
 
         <PatchMesh patch={PATCHES[0]} cut={cutA} zoom={zoom} flash={flash}/>
         <PatchMesh patch={PATCHES[1]} cut={cutB} zoom={zoom} flash={0}/>
         <CameraSymbol x={cameraX} y={cameraY} distance={state.camera[2]}/>
         <GroupDag patch={PATCHES[0]} cut={cutA} top={245} flash={flash}/>
-        <GroupDag patch={PATCHES[1]} cut={cutB} top={660} flash={0}/>
+        <GroupDag patch={PATCHES[1]} cut={cutB} top={625} flash={0}/>
         <InlineCaption time={t} refining={cutA.detail === 'fine'}/>
       </svg>
     </AbsoluteFill>
