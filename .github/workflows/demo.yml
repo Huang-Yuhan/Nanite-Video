@@ -7,15 +7,24 @@ on:
       - main
       - feat/cluster-dag-motion-demo
 
+concurrency:
+  group: episode01-keyframes-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   demo:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Install Chinese typography
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-noto-cjk
+          fc-cache -f
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Typecheck
@@ -32,6 +41,16 @@ jobs:
         run: npm run still:episode01-graph
       - name: Render Episode 01 compact partition frame
         run: npm run still:episode01-partition
+      - name: Validate Episode 01 Group / DAG hierarchy and LOD bounds
+        run: npm run validate:hierarchy
+      - name: Render Group simplification scene
+        run: npm run still:episode01-group
+      - name: Render DAG scene
+        run: npm run still:episode01-dag
+      - name: Render Error and Bounds scene
+        run: npm run still:episode01-error
+      - name: Render final Runtime bridge scene
+        run: npm run still:episode01-runtime
       - name: Render Episode 01 local geometry frame
         run: npm run still:episode01-local
       - name: Render Episode 01 cluster boundary frame
@@ -46,4 +65,8 @@ jobs:
             out/episode-01-clusters.png
             out/episode-01-graph.png
             out/episode-01-partition.png
+            out/episode-01-group.png
+            out/episode-01-dag.png
+            out/episode-01-error.png
+            out/episode-01-runtime.png
           retention-days: 7

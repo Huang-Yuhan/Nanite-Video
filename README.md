@@ -2,31 +2,55 @@
 
 **代码驱动的 Nanite 算法动画，不使用 AI 视频生成。**
 
-## 第一期正式工程：Episode01Workprint
+## 第一期视频 · 六章完整视觉工作版
 
-> 状态：第一章镜头的工程原型，**不是整期成片**。当前使用无配音的算法 animatic；总片长不设限制。正式的六章脚本见 `scripts/episode-01/`。
+这是一条**已实现六章镜头的 Remotion 可渲染工作版**，不是只有第一、二章的旧 Demo。与 `scripts/episode-01/narration.md`（剧本 V0.5）配套。工程的实际章结构：
 
-`src/episode01/` 是第一期正式视频的独立代码入口：
+| 章节 | 实现 | 演示关键点 |
+| --- | --- | --- |
+| 01 为什么需要局部几何 LOD | `Chapter01.tsx` | 同一岩壁 Fine / Coarse / Local 三种三角拓扑 |
+| 02 Triangle Clustering | `Chapter02.tsx` | 32 triangle dual graph、共享边、两种分区 |
+| 03 Grouping & Simplification | `Chapter03.tsx` | 四个 Fine Cluster 聚合，锁外边界，八次合法内部 Edge Collapse，16-tri 两个 Coarse Cluster |
+| 04 DAG 与合法 Cut | `Chapter04.tsx` | Group 级 4 fine ↔ 2 coarse、为何非唯一 Tree Parent、拒绝任意局部混选 |
+| 05 Geometric Error & Bounds | `Chapter05.tsx` | QEM 直觉、Sample Error、LODBounds Union、误差单调性、屏幕误差阈值 |
+| 06 Runtime 选择闭环 | `Chapter06.tsx` | Camera 改变 Projected Error，合法 Group Cut 切换；BVH/Culling 留到第二期 |
 
-- `Episode01.tsx`：使用 Remotion `Sequence` 的工作版时间轴；逐章接入后延长时长，不渲染尚未实现的章节占位图。
-- `ch01Geometry.ts`：一张连续的、可复现的三维岩壁网格；为整块 Mesh Fine、整块 Mesh Coarse、局部 Fine + 其余 Coarse 三种表示构造真实三角形集合。
-- `Chapter01.tsx`：第一章的程序化几何动画——岩壁出场 → Wireframe → Whole-mesh LOD 切换 → 近处低精度的问题 → 局部 LOD → Cluster 概念铺垫。
+**技术限定**：三角形数据、合法的内部 edge-collapse 序列和分区图来自本项目的教学网格，具有拓扑测试；不是 UE 5.8.4 的真实 Simplifier 导出结果。第五章的 Sampling Error 是几何比较教学代理值，区别于 QEM 平方代价及真实 `SimplifyError`；一像素阈值也是教学值。UE 5.8.4 的 Builder 数据与字段参考 `scripts/episode-01/ue-5.8.4-source-review.md`。Runtime 精确 GPU 投影公式没有在此伪装成已经验证。
 
-**本阶段只演示 LOD 的粒度问题**：10 条相连的教学网格条带，每条 Fine 96 tris、Coarse 24 tris；完整 Fine 960 tris，完整 Coarse 240 tris，局部 Fine 456 tris。每个条带的竖向边界采样保持一致，粗细混排也不产生裂缝；上下外轮廓是同一条几何线，但 Fine 的边缘分段可能更多。这里的条带仅是局部精度示例，**不是 UE 5.8.4 Graph Partition 生成的真实 Cluster**。
+### 运行与视频输出
 
 ```bash
 npm install
-npm run studio                     # 选择 Episode01Workprint
-npm run validate:episode01        # 验证 3 种网格的数量、流形边界与混排接缝
 npm run check
-npm run still:episode01-local     # out/episode-01-local-lod.png
-npm run still:episode01           # out/episode-01-clusters.png
-npm run render:episode01          # out/episode-01-workprint.mp4
+npm run validate:all
+npm run studio                         # 选择 Episode01Workprint
+npm run render:episode01              # 全尺寸 1920x1080 / 30fps MP4
+npm run render:episode01-preview      # 完整 960x540 MP4 预览版本
 ```
 
-当前 workprint 为 **1920×1080 / 30fps / 36 秒**，只是第一章 animatic 的暂定节奏，不代表整期长度。所有镜头由帧号纯函数驱动，可以任意跳转和重现。CI 只验证类型、拓扑和代表性静帧；**完整 MP4 的节奏与画面仍需要在 Studio 中评审**。
+输出：`out/episode-01-workprint.mp4` 或 `out/episode-01-complete-preview.mp4`。
 
-保留 `ClusterDagDemo` 作为算法实验参考，不再把它当作第一期的正式视觉模板。之前的 Camera ↔ DAG Cut Draft PR #3 也不会阻塞这一阶段的开发。
+工作版使用 **309 秒 / 30 fps** 的内容驱动时间轴（不是正式版时间约束）。所有镜头均由帧号确定性生成，任何帧都可以直接 seek 并渲染；关键镜头静帧：
+
+```bash
+npm run still:episode01-local
+npm run still:episode01-graph
+npm run still:episode01-partition
+npm run still:episode01-group
+npm run still:episode01-dag
+npm run still:episode01-error
+npm run still:episode01-runtime
+npm run still:episode01-outro
+```
+
+CI 的 `Demo typecheck and frame render` 校验全部拓扑、类型及六章代表性帧；`Episode 01 full visual workprint` 负责导出完整六章的 960×540 MP4，并作为 GitHub Actions Artifact 上传。
+
+### 已有与待完善的内容
+
+- **已具备**：六章时间轴、几何拓扑驱动的动画、真实共享边、边界锁定的折叠序列、DAG 组级依赖图、误差可视化、最终 Camera/Cut 选择示意、CI 验证、完整 MP4 导出指令。
+- **尚未具备**：正式中文旁白音频及同步配音节奏、原始高质量岩壁资产、美术级光照/材质、声音设计、真实 UE5.8.4 测量曲线和逐镜头的最终视觉审查。因此目前定位为**完整视觉工作版（silent workprint）**，不应冒称已经做完最终可发布的配音成片。
+
+保留旧的 `ClusterDagDemo` 用于算法实验。曾经的 Runtime Camera / DAG 双栏 Draft PR #3 不是本版的正式视觉模版。
 
 ---
 
