@@ -14,7 +14,7 @@ export const COLOR={
 };
 export const FINE_COLORS=[COLOR.blue,COLOR.green,COLOR.orange,COLOR.purple];
 export const COARSE_COLORS=[COLOR.blue,COLOR.orange];
-export const FONT="'Inter', 'Noto Sans SC', 'Microsoft YaHei', sans-serif";
+export const FONT="'Noto Sans CJK SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif";
 export const MONO="'JetBrains Mono', 'Cascadia Code', monospace";
 export type XY={x:number,y:number};
 export const clamp=(t:number)=>Math.max(0,Math.min(1,t));
