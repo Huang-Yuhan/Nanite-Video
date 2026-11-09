@@ -1,4 +1,5 @@
 import {Config} from '@remotion/cli/config';
 
-// WebGL is needed for @remotion/three when rendering via Chromium.
-Config.setChromiumOpenGlRenderer('angle');
+// Main algorithm scenes are deterministic SVG vector animations.
+// They do not need a Chromium WebGL backend.
+Config.setVideoImageFormat('jpeg');
