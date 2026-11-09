@@ -1,6 +1,6 @@
 # Episode 01 · 第一轮技术审稿记录（V0.3）
 
-> 当前结论：保留六章结构，优先修正技术措辞；**不设置总时长或每章硬性时间预算**。此文件用于评审，暂不代表全部技术问题已通过 UE 5.7.4 源码核对。
+> 当前结论：保留六章结构，优先修正技术措辞；**不设置总时长或每章硬性时间预算**。此文件用于评审，暂不代表全部技术问题已通过 UE 5.8.4 源码核对。
 
 ## 叙事判断
 
@@ -23,7 +23,7 @@
 
 - 第五章不要把 QEM collapse cost、LOD 误差和投影屏幕误差混成一个量。
 - 单调性应发生在运行时使用的投影误差判断意义下；仅显示 e_parent >= e_child 这一个数字关系，不足以解释任何视角下的正确性。
-- 正式制作前对照 UE 5.7.4 DagBuilder / simplifier 的误差传播与 bounds 修正规则。
+- 正式制作前对照 UE 5.8.4 DagBuilder / simplifier 的误差传播与 bounds 修正规则。
 - 动画中的无单调性错误例子只能是**人为构造的教学数据**，不能称作实际 Nanite 构建输出。
 
 ### P1 · 两次 Partitioning 需要可验证的不同输入
@@ -37,7 +37,7 @@
 - 第一章岩壁可以在第二章逐步放大为简化教学 patch；不要让观众以为更换了另一份模型。
 - 第三、四章的 4 fine / 2 coarse 使用相同 cluster ID 与真实边界数据，同时驱动网格、抽象节点和依赖边。
 - 「边界锁定」画面必须展示本轮 Group 的**外部边界**，不要求所有历史边界永远固定。
-- UE 5.7.4 实际源码片段只在已经核对符号和字段后显示；目前文稿未承诺具体 API。
+- UE 5.8.4 实际源码片段只在已经核对符号和字段后显示；目前文稿未承诺具体 API。
 
 ## 剧本剪辑原则（时长不限）
 
@@ -51,7 +51,7 @@
 1. 是否有必要在第三章的 Graph Grouping 阶段展示 weighted cut 的示例数据？
 2. 第四章「合法 Cut」的单镜头应讲到什么程度，才能自然引出第二期？
 3. 第五章的 projected monotonicity 是否需要一个独立的 3D bounds 动画？
-4. 具体 UE 5.7.4 的简化错误度量、边界约束与 DAG 构建，需要真实源码确认（见 technical-notes.md）。
+4. 具体 UE 5.8.4 的简化错误度量、边界约束与 DAG 构建，需要真实源码确认（见 technical-notes.md）。
 
 ## 本轮代码与文档范围
 
@@ -67,6 +67,21 @@
 - 新增非嵌套 Bounds 的反例，让观众直接看见“误差标量单调但屏幕误差逆序”的失败。
 - 为教学推导定义 E ≈ K·e/max(distance(camera,sphere), epsilon)，并说明球的包含关系与最近点距离的联系。
 - 第五章分镜由 6 个细化为 9 个，不限制镜头时长。
-- 引用 SIGGRAPH 2021 公开技术讲义，但不宣称已完成对 UE 5.7.4 全部误差字段的源码核对。
+- 引用 SIGGRAPH 2021 公开技术讲义，但不宣称已完成对 UE 5.8.4 全部误差字段的源码核对。
 
 **后续技术阻塞项**：在录制带具体 UE 实现符号的片段前，需核对现代版本中的 Error/Bounds 传播、组共享数据与 ViewError 投影修正。
+
+## UE 5.8.4 实际源码核对（V0.4）
+
+已验证用户 fork 的 `Build.version = 5.8.4`，并实际阅读 `ClusterDAG.h/.cpp`、`Cluster.h/.cpp`：
+
+- 代码入口为 `FClusterDAG::ReduceGroup`；不是 `DagBuilder.cpp`。版本切换后，具体字段也已不同于先前 5.6.1 的数据。
+- 对每个 fine child，保留各自的 `LODError`、`LODBounds`；`Group` 聚合子误差的最大值和子误差球的联合球。
+- 本次 `SimplifyTriangles` 返回的 `SimplifyError` 与 `Group.ParentLODError` 取 max；生成的一组 coarse parents 全部复制 `Group.ParentLODError` 和 `Group.LODBounds`。
+- `Group.Bounds` 与 `Group.LODBounds` 是不同信息，制作时必须清楚区分空间可见性包围球与投影误差球。
+- 当前 Graph Grouping 权重还考虑 sibling 关系及 locality，不能把实际权重写成简单的共享边总数。
+- 三角形简化器使用 `ExternalEdges` 与 `LockPosition` 保护外部边界，且平方误差经过 `sqrt` 和缩放还原后才返回。
+
+逐条证据及私有源文件定位：见 [ue-5.8.4-source-review.md](./ue-5.8.4-source-review.md)。
+
+**未核实**：UE 5.8.4 Runtime Shader 中误差投影的精确式、近距与透视修正、层级数据编码；不要将教学用误差公式说成实际 GPU 实现。下一阶段技术审查请从这些问题继续。
