@@ -34,7 +34,7 @@ export const Episode01Chapter06:React.FC=()=>{
   const fineSelected=screenError>1;
   const sceneAppear=smooth(14,17,t)*(1-smooth(48,51,t));
   const meshView=makeView(mix(360,445,cameraProgress),645,530,t);
-  const zoomed=smooth(18,29,t);
+  const zoomed=0;
   const diagramCenter={
     fine:FINE_NODES.map((p)=>({x:(p.x-960)*0.58+1390,y:(p.y-505)*0.73+555})),
     coarse:COARSE_NODES.map((p)=>({x:(p.x-960)*0.58+1390,y:(p.y-505)*0.73+555})),
@@ -83,9 +83,9 @@ export const Episode01Chapter06:React.FC=()=>{
             stroke={COLOR.gold} strokeWidth={2} strokeDasharray="8 11"
             fill="none" opacity={0.45}/>
           <text x={1405} y={169} fontFamily={MONO} textAnchor="middle"
-            fontSize={25} fill={COLOR.muted}>LOD DEPENDENCY DAG</text>
+            fontSize={22} fill={COLOR.muted}>Cluster DAG</text>
           <text x={647} y={171} fontFamily={MONO} textAnchor="middle"
-            fontSize={25} fill={COLOR.muted}>CURRENT CAMERA / GEOMETRY</text>
+            fontSize={22} fill={COLOR.muted}>Camera / Geometry</text>
           <text x={1470} y={844} fill={fineSelected?COLOR.gold:COLOR.cyan}
             fontFamily={MONO} textAnchor="middle" fontSize={26}>
             {fineSelected?'4 FINE CLUSTERS':'2 COARSE CLUSTERS'}
@@ -105,23 +105,17 @@ export const Episode01Chapter06:React.FC=()=>{
       <g opacity={end}>
         <rect width={1920} height={1080} fill={COLOR.bg} opacity={0.95}/>
         <g opacity={title} textAnchor="middle">
-          <text x={960} y={329} fill={COLOR.cyan}
-            fontFamily={MONO} fontSize={27} letterSpacing={6}>
-            NANITE · EPISODE 01
+          <text x={960} y={340} fill={COLOR.muted}
+            fontFamily={MONO} fontSize={23} letterSpacing={2}>
+            Nanite / 01
           </text>
-          <text x={960} y={451} fill={COLOR.white}
-            fontFamily={FONT} fontSize={66} fontWeight={600}>
+          <text x={960} y={470} fill={COLOR.white}
+            fontFamily={FONT} fontSize={60} fontWeight={500}>
             从 Mesh 到 Cluster DAG
           </text>
-          <path d="M480 516 H1440" stroke={COLOR.gold}
-            strokeWidth={2} opacity={0.50}/>
-          <text x={960} y={600} fill={COLOR.muted}
-            fontFamily={MONO} fontSize={26} letterSpacing={2}>
-            NEXT / GPU HIERARCHY · CULLING · RASTERIZATION
-          </text>
-          <text x={960} y={683} fill={COLOR.gold}
-            fontFamily={FONT} fontSize={32}>
-            第二期：GPU 如何高效选出并渲染这些 Cluster？
+          <text x={960} y={618} fill={COLOR.muted}
+            fontFamily={FONT} fontSize={26}>
+            下一期：Hierarchy、Culling 与 Rasterization
           </text>
         </g>
       </g>
