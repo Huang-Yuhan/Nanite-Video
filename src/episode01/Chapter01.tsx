@@ -19,7 +19,7 @@ const PALETTE = [
   '#5bb8ed', '#70cc9e', '#f2ad62', '#b794ef', '#ed91ad',
   '#7bbec7', '#d2bf7f', '#9badff', '#9bd281', '#d89cbf',
 ];
-const FONT = "'Inter', 'Noto Sans SC', 'Microsoft YaHei', sans-serif";
+const FONT = "'Noto Sans CJK SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif";
 const MONO = "'JetBrains Mono', 'Cascadia Code', monospace";
 
 type Point = {x: number; y: number};
@@ -43,7 +43,7 @@ export function viewAt(t: number): View {
 
 /** A didactic pseudo-perspective dolly, not the UE camera matrix. */
 export function project([x, y, z]: Vec3, view: View): Point {
-  const depth = 1 + view.perspective * (0.28 * (x + 5.5) - 0.15 * z);
+  const depth = 1 + view.perspective * (0.07 * (x + 5.5) - 0.10 * z);
   const scale = (102 * view.zoom) / Math.max(0.55, depth);
   return {
     x: 960 + (x - view.xFocus) * scale,
