@@ -1,0 +1,26 @@
+{
+  "name": "nanite-video",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts ClusterDagDemo out/cluster-dag-demo.mp4 --gl=angle --concurrency=1",
+    "still": "remotion still src/index.ts ClusterDagDemo out/cover.png --frame=420 --gl=angle",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@react-three/fiber": "^9.0.0",
+    "@remotion/three": "4.0.541",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "remotion": "4.0.541",
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "@remotion/cli": "4.0.541",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/three": "^0.180.0",
+    "typescript": "~5.8.3"
+  }
+}
