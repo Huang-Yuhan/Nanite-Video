@@ -1,6 +1,6 @@
 # Nanite 技术解析（一）：从 Mesh 到 Cluster DAG
 
-> 状态：脚本评审稿 V0.2（2026-11-09）；**不是最终逐字录音稿**。本 PR 只包含文档，不修改视频代码。
+> 状态：脚本技术审稿 V0.3（2026-11-09）；**不是最终逐字录音稿**。本 PR 只包含文档，不修改视频代码。
 >
 > 受众：游戏引擎与实时渲染程序员；默认了解 Mesh、LOD、Triangle、GPU Rasterization。
 >
@@ -14,18 +14,18 @@
 
 从问题出发推导：**局部 LOD 需求 → Triangle Clustering → Cluster Group → Merge / Simplify / Split → DAG → Error / Bounds**。
 
-## 六章时间预算（总计 15:25）
+## 六章时间预算（总计 19:00，建议范围 18–20 分钟）
 
 | 时间 | 章节 | 希望观众回答的问题 | 章节出口 |
 | --- | --- | --- | --- |
-| 00:00–02:10（2:10） | 01 为什么需要局部几何 LOD？ | 为什么单个 Mesh 的整体 LOD 有时不够灵活？ | 把 Mesh 划分为细粒度的几何单元 |
-| 02:10–04:35（2:25） | 02 Triangle Clustering | 如何让 Cluster 大小受限且尽量减少跨 Cluster 边？ | 得到初始 fine Clusters |
-| 04:35–07:55（3:20） | 03 Grouping & Simplification | 独立简化会有什么问题？怎样让简化更自由？ | 得到一组等边界的 coarse Clusters |
-| 07:55–11:00（3:05） | 04 为什么产生 DAG？ | 为什么 Merge / Split 不能用普通父子 Tree 表达？ | 生成递归 LOD 依赖，理解组级替换 |
-| 11:00–14:25（3:25） | 05 Geometric Error | 如何评估简化损失并支持 Runtime 选 LOD？ | 误差、包围信息与单调性 |
-| 14:25–15:25（1:00） | 06 完整回顾与衔接 | Runtime 会拿到什么，下一步要解决什么？ | 接第二期 Camera / Cut Selection |
+| 00:00–02:30（2:30） | 01 为什么需要局部几何 LOD？ | 为什么单个 Mesh 的整体 LOD 有时不够灵活？ | 把 Mesh 划分为细粒度的几何单元 |
+| 02:30–05:30（3:00） | 02 Triangle Clustering | 如何让 Cluster 大小受限且尽量减少跨 Cluster 边？ | 得到初始 fine Clusters |
+| 05:30–09:30（4:00） | 03 Grouping & Simplification | 独立简化会有什么问题？怎样让简化更自由？ | 得到一组等边界的 coarse Clusters |
+| 09:30–13:30（4:00） | 04 为什么产生 DAG？ | 为什么 Merge / Split 不能用普通父子 Tree 表达？ | 生成递归 LOD 依赖，理解组级替换 |
+| 13:30–18:00（4:30） | 05 Geometric Error | 如何评估简化损失并支持 Runtime 选 LOD？ | 误差、包围信息与单调性 |
+| 18:00–19:00（1:00） | 06 完整回顾与衔接 | Runtime 会拿到什么，下一步要解决什么？ | 接第二期 Camera / Cut Selection |
 
-时间不是硬性卡点；先配合声画节奏制作 animatic，再调整旁白。
+目标不是填满 19 分钟：先按旁白试读和关键几何动画做 animatic，再调整总时长。增加的时间优先给 Grouping、Edge Collapse、多对多依赖以及 Error / Bounds 视觉推导；不增加重复讲解。
 
 ## 章节之间的因果关系
 
@@ -65,7 +65,7 @@
 - 因果链条能否让熟悉渲染的观众在不看 PPT 的情况下跟上？
 - 「为什么是 DAG」的表达是否足够精确，是否误导成每个 Cluster 可独立切换？
 - 第五章是否偏离了 Offline Build 主线？
-- 15:25 是否让旁白有自然留白，尤其第三、四章？
+- 暂定 19:00 是否给重要动画留出足够观察时间，避免为了凑时长增加废话？
 - 哪些句子需要 UE 5.7.4 实际源码确认？参见 technical-notes.md。
 
 ## 文档
