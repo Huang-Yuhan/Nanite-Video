@@ -8,12 +8,12 @@ import type {Vec3} from './ch01Geometry';
 
 export const W=1920, H=1080;
 export const COLOR={
-  bg:'#0d111e', white:'#e8edf8', muted:'#8da1bb', cyan:'#59d3e8',
-  gold:'#ffcf70', orange:'#ffa663', red:'#ff6f83',
-  blue:'#5bb8ed', green:'#70cc9e', purple:'#b794ef',
+  bg:'#101319', white:'#e9e9e5', muted:'#87908f', cyan:'#a2bcbc',
+  gold:'#d6b681', orange:'#b6a38e', red:'#c98b88',
+  blue:'#95aab8', green:'#a0b3a3', purple:'#aaa4b8',
 };
-export const FINE_COLORS=[COLOR.blue,COLOR.green,COLOR.orange,COLOR.purple];
-export const COARSE_COLORS=[COLOR.blue,COLOR.orange];
+export const FINE_COLORS=['#869caa','#9baea4','#ae9f91','#a19baa'];
+export const COARSE_COLORS=['#aab5b0','#b9a99a'];
 export const FONT="'Noto Sans CJK SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif";
 export const MONO="'JetBrains Mono', 'Cascadia Code', monospace";
 export type XY={x:number,y:number};
@@ -80,9 +80,9 @@ export function PatchGeometry({
       {tris.map((tri,i)=>(
         <polygon key={level+'-'+i} points={pathFor(tri,view,moving)}
           fill={colors?palette[ids[i]]:'#23394d'}
-          fillOpacity={colors?0.36+glow*0.10:0.7}
-          stroke={COLOR.white} strokeWidth={wire?2.15:0}
-          strokeOpacity={wire?0.73:0}
+          fillOpacity={colors?0.24+glow*0.04:0.54}
+          stroke={COLOR.white} strokeWidth={wire?1.65:0}
+          strokeOpacity={wire?0.62:0}
           strokeLinejoin="round"/>
       ))}
     </g>
@@ -152,38 +152,32 @@ export function ClusterDag({
 export const Scene:React.FC<{children:React.ReactNode}>=({children})=>(
   <AbsoluteFill style={{
     overflow:'hidden',color:COLOR.white,fontFamily:FONT,
-    background:'radial-gradient(ellipse at 49% 44%, #19283c 0%, #0d111e 72%)',
+    background:COLOR.bg,
   }}>
     <svg viewBox={'0 0 '+W+' '+H} width="100%" height="100%">
-      <defs>
-        <filter id="soft-glow" x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur stdDeviation="5"/>
-        </filter>
-        <linearGradient id="gold-trace" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor={COLOR.gold} stopOpacity=".12"/>
-          <stop offset="50%" stopColor={COLOR.gold} stopOpacity=".95"/>
-          <stop offset="100%" stopColor={COLOR.gold} stopOpacity=".12"/>
-        </linearGradient>
-      </defs>
       {children}
     </svg>
   </AbsoluteFill>
 );
+/**
+ * Captions support the geometry rather than taking over the shot.
+ * English beat names remain in the source for editing and narration timing.
+ */
 export function Cue({headline,sub,t,a=0,b=999}:{
   headline:string;sub:string;t:number;a?:number;b?:number;
 }){
-  const alpha=smooth(a,a+0.55,t)*(1-smooth(b-0.5,b,t));
-  return (
-    <g opacity={alpha} textAnchor="middle">
-      <text x={960} y={934} fontFamily={MONO} fontSize={26}
-        letterSpacing={3.5} fill={COLOR.cyan}>{headline}</text>
-      <text x={960} y={1002} fontSize={39} fill={COLOR.white}>{sub}</text>
-    </g>
-  );
+  const alpha=smooth(a,a+0.65,t)*(1-smooth(b-0.75,b,t));
+  return <g opacity={alpha}>
+    <text x={960} y={986} textAnchor="middle" fontFamily={FONT}
+      fontSize={33} fill={COLOR.white}>{sub}</text>
+  </g>;
 }
-export const Guide:React.FC<{title:string;progress?:number}>=({title,progress=1})=>(
-  <g opacity={progress}>
-    <text x={104} y={96} fill={COLOR.muted} fontFamily={MONO}
-      fontSize={22} letterSpacing={2.7}>{title}</text>
-  </g>
-);
+export const Guide:React.FC<{title:string;progress?:number}>=({title,progress=1})=>{
+  const chapter=title.trim().slice(0,2);
+  return <g opacity={progress*0.50}>
+    <text x={100} y={92} fill={COLOR.muted} fontFamily={MONO}
+      fontSize={22} letterSpacing={2}>{chapter}</text>
+    <line x1={146} x2={206} y1={84} y2={84}
+      stroke={COLOR.muted} strokeWidth={1.3} opacity={0.5}/>
+  </g>;
+};
