@@ -26,6 +26,12 @@ jobs:
         run: npm run validate:episode01
       - name: Render a representative vector frame
         run: npm run still
+      - name: Validate Episode 01 Triangle Adjacency Graph and partitions
+        run: npm run validate:chapter02
+      - name: Render Episode 01 Triangle Graph frame
+        run: npm run still:episode01-graph
+      - name: Render Episode 01 compact partition frame
+        run: npm run still:episode01-partition
       - name: Render Episode 01 local geometry frame
         run: npm run still:episode01-local
       - name: Render Episode 01 cluster boundary frame
@@ -38,4 +44,6 @@ jobs:
             out/cover.png
             out/episode-01-local-lod.png
             out/episode-01-clusters.png
+            out/episode-01-graph.png
+            out/episode-01-partition.png
           retention-days: 7
