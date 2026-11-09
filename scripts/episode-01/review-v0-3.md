@@ -56,3 +56,17 @@
 ## 本轮代码与文档范围
 
 本轮仅改文档，尚未修改视频引擎、动画组件或真实 UE 数据导出。所有实现将在脚本讨论后分章节提出独立 PR。
+
+
+## 第五章第二轮审稿（Error / Bounds）
+
+**已落实在本 PR 的 narration.md、storyboard.md 与 technical-notes.md：**
+
+- 将“误差单调性”的理由从单纯 e_parent ≥ e_child，提升到对象空间误差 + 用于投影的 Bounds 的联合单调。
+- 增加同一 Cluster Group 采用共享 Error / Union Bounds 以保证各成员作出一致决策的环节。
+- 新增非嵌套 Bounds 的反例，让观众直接看见“误差标量单调但屏幕误差逆序”的失败。
+- 为教学推导定义 E ≈ K·e/max(distance(camera,sphere), epsilon)，并说明球的包含关系与最近点距离的联系。
+- 第五章分镜由 6 个细化为 9 个，不限制镜头时长。
+- 引用 SIGGRAPH 2021 公开技术讲义，但不宣称已完成对 UE 5.7.4 全部误差字段的源码核对。
+
+**后续技术阻塞项**：在录制带具体 UE 实现符号的片段前，需核对现代版本中的 Error/Bounds 传播、组共享数据与 ViewError 投影修正。
