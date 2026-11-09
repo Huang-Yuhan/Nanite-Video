@@ -123,11 +123,11 @@ export function validateEpisode01Geometry(): void {
     const sideEdges = new Set<string>();
     const topEdges: Array<[number, number]> = [];
     const bottomEdges: Array<[number, number]> = [];
+    const eq = (x: number, y: number) => Math.abs(x-y) < 1e-6;
     for (const edge of boundary) {
       const [av, bv] = edge.split('|');
       const a = av.split(':').map(Number);
       const b = bv.split(':').map(Number);
-      const eq = (x: number, y: number) => Math.abs(x-y) < 1e-6;
       if (eq(a[0], b[0]) &&
           (eq(a[0], WORLD_LEFT) || eq(a[0], WORLD_RIGHT))) {
         sideEdges.add(edge);
