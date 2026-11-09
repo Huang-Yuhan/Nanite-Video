@@ -30,9 +30,9 @@ const smooth = (start: number, end: number, t: number) => {
 };
 const lerp = (a: number, b: number, s: number) => a + (b - a) * s;
 
-type View = {xFocus: number; zoom: number; perspective: number};
+export type View = {xFocus: number; zoom: number; perspective: number};
 
-function viewAt(t: number): View {
+export function viewAt(t: number): View {
   const approach = smooth(12, 24, t);
   return {
     xFocus: lerp(0, -1.65, approach),
@@ -42,7 +42,7 @@ function viewAt(t: number): View {
 }
 
 /** A didactic pseudo-perspective dolly, not the UE camera matrix. */
-function project([x, y, z]: Vec3, view: View): Point {
+export function project([x, y, z]: Vec3, view: View): Point {
   const depth = 1 + view.perspective * (0.28 * (x + 5.5) - 0.15 * z);
   const scale = (102 * view.zoom) / Math.max(0.55, depth);
   return {
@@ -74,7 +74,7 @@ function shade(tri: WallTriangle) {
   return result;
 }
 
-function TriangleSurface({mode, view, colorProgress, wireOpacity, glow}: {
+export function TriangleSurface({mode, view, colorProgress, wireOpacity, glow}: {
   mode: WallMode;
   view: View;
   colorProgress: number;
@@ -132,7 +132,7 @@ function stripBoundaryPolyline(strip: number, view: View): string {
   }).join(' ');
 }
 
-function ClusterEdges({view, opacity}: {view: View; opacity: number}) {
+export function ClusterEdges({view, opacity}: {view: View; opacity: number}) {
   return (
     <g opacity={opacity}>
       {Array.from({length: STRIPS - 1}, (_, i) => i + 1).map((i) => (
