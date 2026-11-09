@@ -1,219 +1,310 @@
-import React, {useMemo} from 'react';
-import * as THREE from 'three';
-import {ThreeCanvas} from '@remotion/three';
+import React from 'react';
 import {AbsoluteFill, useCurrentFrame} from 'remotion';
-import {ClusterMesh, demoData} from './demoData';
+import {
+  Vec3, Tri, positions, fine, coarse, snapshots, collapses,
+  fineCluster, coarseCluster, perimeter, groupTransition,
+} from './demoData';
 
+/**
+ * Manim / 3Blue1Brown-inspired visual language:
+ * one fullscreen composition, continuous geometry, vector strokes,
+ * meaningful movement, no static dashboard or explanatory slide layout.
+ *
+ * The source vertices are 3D; we project them into the SVG camera by math.
+ * SVG is intentional: edge motion and graph morphology remain razor-sharp
+ * at any resolution and do not require headless Chromium WebGL.
+ */
+const W = 1920;
+const H = 1080;
 const FPS = 30;
-const ACCENT = '#43e0cf';
-const TEXT = '#eaf3ff';
-const MUTED = '#8ea7bd';
+const BACKGROUND = '#0d111e';
+const WHITE = '#e8edf8';
+const QUIET = '#90a2b7';
+const GOLD = '#ffcf70';
+const CYAN = '#59d3e8';
+const FINE = ['#5bb8ed', '#70cc9e', '#f2ad62', '#b794ef'];
+const COARSE = ['#5bb8ed', '#f2ad62'];
 const FONT = "'Inter', 'Noto Sans SC', 'Microsoft YaHei', sans-serif";
 const MONO = "'JetBrains Mono', 'Cascadia Code', monospace";
 
-function smooth(a: number, b: number, t: number): number {
-  const x = Math.max(0, Math.min(1, (t - a) / (b - a)));
+type Point = {x: number; y: number};
+type Projection = (p: Vec3) => Point;
+
+const clamp = (n: number) => Math.min(1, Math.max(0, n));
+const ease = (a: number, b: number, t: number) => {
+  const x = clamp((t - a) / (b - a));
   return x * x * (3 - 2 * x);
-}
-
-const stages = [
-  {at: 0, en: 'SOURCE GEOMETRY', zh: '高密度三角网格', hint: '32 TRIANGLES  /  SOURCE MESH'},
-  {at: 2.2, en: 'INITIAL CLUSTERING', zh: '划分 Fine Clusters', hint: '4 CLUSTERS  /  8 TRIANGLES EACH'},
-  {at: 4.7, en: 'CLUSTER GROUP', zh: '标记 Group 外边界', hint: 'PRESERVE SHARED OUTER BOUNDARY'},
-  {at: 7.2, en: 'MERGE & SIMPLIFY', zh: '从 32 个三角形减少到 16 个', hint: 'PRECOMPUTED BEFORE / AFTER LOD'},
-  {at: 10, en: 'COARSE CLUSTERING', zh: '重新划分 Coarse Clusters', hint: '2 CLUSTERS  /  8 TRIANGLES EACH'},
-  {at: 12.3, en: 'DAG DEPENDENCIES', zh: '构建多对多 LOD 依赖', hint: '4 FINE  →  2 COARSE   /   ONE GROUP TRANSITION'},
-] as const;
-
-const stageAt = (t: number): number => {
-  for (let i = stages.length - 1; i >= 0; i--) {
-    if (t >= stages[i].at) return i;
-  }
-  return 0;
 };
+const lerp = (a: number, b: number, p: number) => a + (b - a) * p;
+const lerpPoint = (a: Point, b: Point, p: number): Point => ({
+  x: lerp(a.x, b.x, p), y: lerp(a.y, b.y, p),
+});
+const lerpVec = (a: Vec3, b: Vec3, p: number): Vec3 =>
+  [lerp(a[0], b[0], p), lerp(a[1], b[1], p), lerp(a[2], b[2], p)];
 
-function MeshPiece({cluster, opacity, colorMix}: {
-  cluster: ClusterMesh;
+function blendHex(from: string, to: string, p: number): string {
+  const a = from.match(/\w\w/g)?.map((v) => parseInt(v, 16)) ?? [0, 0, 0];
+  const b = to.match(/\w\w/g)?.map((v) => parseInt(v, 16)) ?? [0, 0, 0];
+  return '#' + a.map((v, i) => Math.round(lerp(v, b[i], p))
+    .toString(16).padStart(2, '0')).join('');
+}
+
+/** Simple animated 3D -> 2D orthographic projection with a mild perspective cue. */
+function camera(cx: number, cy: number, scale: number, t: number): Projection {
+  const yaw = 0.20 + 0.075 * Math.sin(t * 0.24);
+  const pitch = -0.36 - 0.045 * Math.sin(t * 0.19);
+  return ([x, y, z]) => {
+    const xx = x * Math.cos(yaw) + z * Math.sin(yaw);
+    const zz = -x * Math.sin(yaw) + z * Math.cos(yaw);
+    const yy = y * Math.cos(pitch) - zz * Math.sin(pitch);
+    const depth = y * Math.sin(pitch) + zz * Math.cos(pitch);
+    const perspective = 7.6 / (7.6 - depth * 0.25);
+    return {x: cx + xx * scale * perspective, y: cy - yy * scale * perspective};
+  };
+}
+
+function trianglePoint(tri: Tri, project: Projection, override?: (id: number) => Vec3) {
+  return tri.map((id) => {
+    const p = project(override ? override(id) : positions[id]);
+    return `${p.x.toFixed(2)},${p.y.toFixed(2)}`;
+  }).join(' ');
+}
+
+function Surface({
+  triangles, project, opacity, fillColor, override, strokeOpacity = 0.74,
+}: {
+  triangles: Tri[];
+  project: Projection;
   opacity: number;
-  colorMix: number;
+  fillColor: (tri: Tri) => string;
+  override?: (id: number) => Vec3;
+  strokeOpacity?: number;
 }) {
-  const surface = useMemo(() => {
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(cluster.vertices, 3));
-    geometry.computeVertexNormals();
-    return geometry;
-  }, [cluster]);
-
-  const lines = useMemo(() => {
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(cluster.edges, 3));
-    return geometry;
-  }, [cluster]);
-
-  const color = new THREE.Color('#395871').lerp(new THREE.Color(cluster.color), colorMix);
-
+  if (opacity <= 0.002) return null;
   return (
-    <group visible={opacity > 0.002}>
-      <mesh geometry={surface} renderOrder={2}>
-        <meshStandardMaterial
-          color={color}
-          side={THREE.DoubleSide}
-          flatShading
-          roughness={0.48}
-          metalness={0.12}
-          emissive={cluster.color}
-          emissiveIntensity={0.08 * colorMix}
-          polygonOffset
-          polygonOffsetFactor={1}
-          polygonOffsetUnits={1}
-          transparent
-          opacity={opacity}
-          depthWrite={opacity > 0.98}
+    <g opacity={opacity}>
+      {triangles.map((tri, i) => (
+        <polygon
+          key={i}
+          points={trianglePoint(tri, project, override)}
+          fill={fillColor(tri)}
+          fillOpacity={0.48}
+          stroke={WHITE}
+          strokeWidth={2.0}
+          strokeOpacity={strokeOpacity}
+          strokeLinejoin="round"
         />
-      </mesh>
-      <lineSegments geometry={lines} renderOrder={3}>
-        <lineBasicMaterial
-          color="#c5e7fa"
-          transparent
-          opacity={opacity * 0.48}
-          depthTest={false}
-        />
-      </lineSegments>
-    </group>
+      ))}
+    </g>
   );
 }
 
-function MeshWorld({t}: {t: number}) {
-  const border = useMemo(() => {
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(demoData.boundary, 3));
-    return geometry;
-  }, []);
-
-  const transition = smooth(7.25, 9.55, t);
-  const fineColor = smooth(2.1, 4.45, t);
-  const coarseColor = smooth(9.7, 11.7, t);
-  const borderAlpha = smooth(4.9, 6.6, t) * (1 - smooth(10.1, 11.9, t));
-
+function ClusterText({
+  triangles, classify, colors, prefix, project, opacity,
+}: {
+  triangles: Tri[];
+  classify: (tri: Tri) => number;
+  colors: string[];
+  prefix: string;
+  project: Projection;
+  opacity: number;
+}) {
   return (
-    <>
-      <ambientLight intensity={1.35} />
-      <directionalLight color="#bcefff" position={[2, 4, 7]} intensity={2.0} />
-      <pointLight color="#4b99ed" position={[-5, -1, 4]} intensity={22} />
-      <group rotation={[-0.3 + 0.03 * Math.sin(t * 0.5), -0.16 + 0.15 * Math.sin(t * 0.28), 0.06]}>
-        {demoData.fine.map((cluster) => (
-          <MeshPiece
-            key={cluster.id}
-            cluster={cluster}
-            opacity={1 - transition}
-            colorMix={fineColor}
-          />
-        ))}
-        {demoData.coarse.map((cluster) => (
-          <MeshPiece
-            key={cluster.id}
-            cluster={cluster}
-            opacity={transition}
-            colorMix={coarseColor}
-          />
-        ))}
-        <line geometry={border} renderOrder={9} visible={borderAlpha > 0.01}>
-          <lineBasicMaterial
-            color="#ffba64"
-            transparent
-            opacity={borderAlpha}
-            depthTest={false}
-          />
-        </line>
-      </group>
-    </>
+    <g opacity={opacity} fontFamily={MONO} fontSize={28} fontWeight={600}
+      textAnchor="middle" dominantBaseline="middle">
+      {colors.map((color, id) => {
+        const selected = triangles.filter((tri) => classify(tri) === id);
+        const unique = [...new Set(selected.flatMap((tri) => [...tri]))];
+        const pos: Vec3 = [
+          unique.reduce((v, i) => v + positions[i][0], 0) / unique.length,
+          unique.reduce((v, i) => v + positions[i][1], 0) / unique.length,
+          unique.reduce((v, i) => v + positions[i][2], 0) / unique.length,
+        ];
+        const {x, y} = project(pos);
+        return <text key={prefix + id} x={x} y={y} fill={color}
+          paintOrder="stroke" stroke={BACKGROUND} strokeWidth={7}>
+          {prefix}{id}
+        </text>;
+      })}
+    </g>
   );
 }
 
-function DagGraph({t}: {t: number}) {
-  const reveal = smooth(12.3, 13.1, t);
-  const nodesF = [
-    {id: 'F0', x: 71, c: '#4da9ff'},
-    {id: 'F1', x: 185, c: '#32d1b2'},
-    {id: 'F2', x: 299, c: '#ffbd65'},
-    {id: 'F3', x: 413, c: '#bb8dff'},
-  ];
-  const nodesC = [
-    {id: 'C0', x: 150, c: '#5bafff'},
-    {id: 'C1', x: 334, c: '#ffb95c'},
-  ];
+function PolylineBoundary({project, t, opacity}: {
+  project: Projection;
+  t: number;
+  opacity: number;
+}) {
+  const pts = perimeter.map(project);
+  const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x} ${p.y}`).join(' ') + ' Z';
+  const progress = ease(5.1, 7.9, t);
+  return (
+    <g opacity={opacity}>
+      <path d={d} pathLength={1} stroke={GOLD} strokeWidth={6} fill="none"
+        strokeLinejoin="round" strokeDasharray="1" strokeDashoffset={1 - progress}
+        filter="url(#line-glow)" />
+      <path d={d} pathLength={1} stroke={GOLD} strokeWidth={4} fill="none"
+        strokeLinejoin="round" strokeDasharray="1" strokeDashoffset={1 - progress} />
+    </g>
+  );
+}
+
+/** Real topological edit: vertex r travels onto vertex k; degenerate faces vanish. */
+function Simplification({t, project, opacity}: {
+  t: number;
+  project: Projection;
+  opacity: number;
+}) {
+  const interval = 1.1;
+  const elapsed = Math.max(0, t - 9.0);
+  const step = Math.min(collapses.length, Math.floor(elapsed / interval));
+  const progress = step >= collapses.length
+    ? 1 : ease(0.08, 0.87, elapsed / interval - step);
+  const tris = snapshots[step];
+  const current = collapses[step];
+  const override = (id: number): Vec3 => {
+    if (current && id === current[0]) {
+      return lerpVec(positions[current[0]], positions[current[1]], progress);
+    }
+    return positions[id];
+  };
+  const p0 = current ? project(positions[current[0]]) : null;
+  const p1 = current ? project(positions[current[1]]) : null;
+  const moving = current ? project(override(current[0])) : null;
 
   return (
-    <div style={{opacity: reveal, marginTop: 27}}>
-      <div style={{fontFamily: MONO, color: MUTED, fontSize: 17, letterSpacing: 1.4}}>
-        LOD DEPENDENCY GRAPH
-      </div>
-      <svg width="100%" viewBox="0 0 484 350" style={{overflow: 'visible', marginTop: 6}}>
-        <text x="4" y="40" fill={MUTED} fontFamily={MONO} fontSize="13">FINE  /  HIGH DETAIL</text>
-        <text x="4" y="338" fill={MUTED} fontFamily={MONO} fontSize="13">COARSE  /  LOW DETAIL</text>
-        {nodesF.flatMap((f, i) => nodesC.map((c, j) => {
-          const progress = smooth(13.4 + (i * 2 + j) * 0.14, 15.2 + (i * 2 + j) * 0.14, t);
-          const y1 = 123;
-          const y2 = 262;
-          const x2 = f.x + (c.x - f.x) * progress;
-          const yy2 = y1 + (y2 - y1) * progress;
+    <g opacity={opacity}>
+      <Surface triangles={tris} project={project}
+        fillColor={() => '#2a4054'} override={override} opacity={1}
+        strokeOpacity={0.80} />
+      {p0 && p1 && moving ? (
+        <g>
+          <line x1={p0.x} y1={p0.y} x2={p1.x} y2={p1.y} stroke={GOLD}
+            strokeWidth={5} strokeLinecap="round" opacity={0.85}/>
+          <circle cx={p1.x} cy={p1.y} r={14} stroke={GOLD}
+            strokeWidth={3} fill={BACKGROUND}/>
+          <circle cx={moving.x} cy={moving.y} r={12} fill={GOLD}
+            filter="url(#dot-glow)"/>
+          <circle cx={moving.x} cy={moving.y} r={6} fill={WHITE}/>
+        </g>
+      ) : null}
+    </g>
+  );
+}
+
+const fineNodes: Point[] = [
+  {x: 420, y: 420}, {x: 780, y: 420},
+  {x: 1140, y: 420}, {x: 1500, y: 420},
+];
+const coarseNodes: Point[] = [{x: 740, y: 796}, {x: 1180, y: 796}];
+
+function MorphToDag({t}: {t: number}) {
+  const arrive = ease(20.25, 21.3, t);
+  const morph = ease(21.55, 23.4, t);
+  const circle = ease(22.75, 23.6, t);
+  const fadeGeom = 1 - ease(22.8, 23.5, t);
+  const nodes = [...fineNodes, ...coarseNodes];
+
+  const group = (
+    triangles: Tri[], classifier: (tri: Tri) => number,
+    colors: string[], centers: Point[], origin: Point,
+    keyPrefix: string,
+  ) => colors.map((color, groupId) => {
+    const tris = triangles.filter((tri) => classifier(tri) === groupId);
+    const base = camera(origin.x, origin.y, 88, t);
+    const project: Projection = (p) => lerpPoint(base(p), centers[groupId], morph);
+    return (
+      <g key={keyPrefix + groupId} opacity={arrive * fadeGeom}>
+        {tris.map((tri, index) => (
+          <polygon key={index} points={tri.map((id) => {
+            const p = project(positions[id]);
+            return `${p.x},${p.y}`;
+          }).join(' ')}
+          fill={color} fillOpacity={0.38}
+          stroke={WHITE} strokeWidth={2.3} strokeOpacity={0.8}/>
+        ))}
+      </g>
+    );
+  });
+
+  const thumbnails = 1 - ease(21.3, 22.5, t);
+  const lines = Math.max(0, t - 23.45);
+
+  return (
+    <g>
+      <g>
+        {fineNodes.flatMap((node, i) => coarseNodes.map((target, j) => {
+          const progress = ease(i * 0.105 + j * 0.07, 0.75 + i * 0.105 + j * 0.07, lines);
           return (
-            <line
-              key={f.id + '-' + c.id}
-              x1={f.x}
-              y1={y1}
-              x2={x2}
-              y2={yy2}
-              stroke="#6c92ae"
-              strokeWidth={2}
-              opacity={0.6}
-            />
+            <line key={`${i}-${j}`} x1={node.x} y1={node.y}
+              x2={lerp(node.x, target.x, progress)}
+              y2={lerp(node.y, target.y, progress)}
+              stroke="#9fb0c8" strokeWidth={3} opacity={0.55 * circle}/>
           );
         }))}
-        {nodesF.map((f) => (
-          <g key={f.id}>
-            <circle cx={f.x} cy="111" r={27} fill="#102235" stroke={f.c} strokeWidth="3"/>
-            <circle cx={f.x} cy="111" r={5} fill={f.c}/>
-            <text x={f.x} y="161" textAnchor="middle" fill={TEXT} fontFamily={MONO} fontSize="16">{f.id}</text>
-          </g>
-        ))}
-        {nodesC.map((c) => (
-          <g key={c.id}>
-            <circle cx={c.x} cy="275" r={30} fill="#102235" stroke={c.c} strokeWidth="3"/>
-            <circle cx={c.x} cy="275" r={5} fill={c.c}/>
-            <text x={c.x} y="318" textAnchor="middle" fill={TEXT} fontFamily={MONO} fontSize="16">{c.id}</text>
-          </g>
-        ))}
-      </svg>
-    </div>
+      </g>
+      {group(fine, fineCluster, FINE, fineNodes, {x: 590, y: 535}, 'F')}
+      {group(coarse, coarseCluster, COARSE, coarseNodes, {x: 1350, y: 535}, 'C')}
+
+      <g opacity={arrive * thumbnails} fontFamily={MONO} fontSize={30}
+        textAnchor="middle" fill={QUIET} letterSpacing={3}>
+        <text x={590} y={800}>FINE CLUSTERS</text>
+        <text x={1350} y={800}>COARSE CLUSTERS</text>
+      </g>
+      <g opacity={circle}>
+        <text x={960} y={277} textAnchor="middle" fontSize={29}
+          letterSpacing={4} fontFamily={MONO} fill={QUIET}>FINE  ·  HIGH DETAIL</text>
+        <text x={960} y={913} textAnchor="middle" fontSize={29}
+          letterSpacing={4} fontFamily={MONO} fill={QUIET}>COARSE  ·  LOW DETAIL</text>
+        {nodes.map((p, i) => {
+          const isFine = i < fineNodes.length;
+          const index = isFine ? i : i - fineNodes.length;
+          const color = isFine ? FINE[index] : COARSE[index];
+          const id = (isFine ? 'F' : 'C') + index;
+          const size = isFine ? 44 : 55;
+          return (
+            <g key={id}>
+              <circle cx={p.x} cy={p.y} r={size} fill={BACKGROUND}
+                stroke={color} strokeWidth={4}/>
+              <circle cx={p.x} cy={p.y} r={8} fill={color}/>
+              <text x={p.x} y={p.y + size + 37} fill={WHITE}
+                fontFamily={MONO} fontSize={28} textAnchor="middle">{id}</text>
+            </g>
+          );
+        })}
+      </g>
+    </g>
   );
 }
 
-function BuildPipeline({step}: {step: number}) {
+const explanations = [
+  {start: 0, end: 4.9, title: 'Triangle → Cluster',
+    sub: '把同一张网格分成更小的几何单元'},
+  {start: 4.9, end: 9, title: 'Cluster Group',
+    sub: 'Group 的外边界保持不变，内部可以重新组织'},
+  {start: 9, end: 17.85, title: 'Edge Collapse',
+    sub: '逐步移除内部顶点，真实改变网格拓扑'},
+  {start: 17.85, end: 20.25, title: 'Repartition',
+    sub: '简化后的三角形重新划分为 Coarse Clusters'},
+  {start: 20.25, end: 25, title: 'DAG ≠ Tree',
+    sub: '多个 Fine Cluster 共同对应多个 Coarse Cluster'},
+];
+
+function Annotation({t}: {t: number}) {
+  const scene = explanations.find((v) => t >= v.start && t < v.end) ??
+    explanations[explanations.length - 1];
+  const opacity = ease(scene.start, scene.start + 0.4, t) *
+    (1 - ease(scene.end - 0.35, scene.end, t));
   return (
-    <div style={{marginTop: 32, display: 'flex', flexDirection: 'column', gap: 9}}>
-      {stages.map((s, i) => {
-        const active = i === step;
-        return (
-          <div key={s.en} style={{
-            padding: '14px 13px',
-            display: 'flex',
-            gap: 20,
-            alignItems: 'center',
-            borderRadius: 11,
-            background: active ? 'rgba(38,102,122,.32)' : 'transparent',
-            border: active ? '1px solid rgba(77,222,209,.26)' : '1px solid transparent',
-            opacity: i > step ? 0.4 : 1,
-          }}>
-            <span style={{fontFamily: MONO, color: active ? ACCENT : MUTED, fontSize: 19}}>
-              {String(i + 1).padStart(2, '0')}
-            </span>
-            <span style={{fontFamily: MONO, color: active ? TEXT : MUTED, fontSize: 19}}>
-              {s.en}
-            </span>
-          </div>
-        );
-      })}
+    <div style={{
+      position: 'absolute', bottom: 108, left: 100, right: 100,
+      textAlign: 'center', opacity, pointerEvents: 'none',
+    }}>
+      <div style={{fontFamily: MONO, fontSize: 29, letterSpacing: 4,
+        color: CYAN, fontWeight: 600}}>{scene.title}</div>
+      <div style={{fontSize: 43, marginTop: 16, fontWeight: 550, color: WHITE}}>
+        {scene.sub}
+      </div>
     </div>
   );
 }
@@ -221,105 +312,74 @@ function BuildPipeline({step}: {step: number}) {
 export const ClusterDagDemo: React.FC = () => {
   const frame = useCurrentFrame();
   const t = frame / FPS;
-  const step = stageAt(t);
-  const s = stages[step];
-  const dag = smooth(12.3, 13.05, t);
-  const meshShift = smooth(12.3, 13.05, t);
+  const fineReveal = ease(2.0, 4.6, t);
+  const groupBoundary = ease(5.0, 6.1, t) * (1 - ease(8.4, 9.3, t));
+  const simplifyAlpha = ease(8.85, 9.15, t) * (1 - ease(17.6, 18, t));
+  const coarseAlpha = ease(17.7, 18.15, t) * (1 - ease(20, 20.95, t));
+  const initialAlpha = ease(0.25, 1.25, t) * (1 - ease(8.8, 9.15, t));
+  const projector = camera(
+    lerp(960, 955, ease(7.5, 9, t)),
+    lerp(515, 498, ease(7.5, 9, t)),
+    lerp(173, 190, ease(7.5, 9, t)),
+    t,
+  );
+  const neutral = '#293f52';
 
   return (
     <AbsoluteFill style={{
-      fontFamily: FONT,
-      color: TEXT,
-      background: 'radial-gradient(ellipse at 42% 43%, #122d45 0%, #0b182a 54%, #080f1b 100%)',
-      overflow: 'hidden',
+      background: `radial-gradient(circle at 48% 44%, #1a2435 0%, ${BACKGROUND} 67%)`,
+      overflow: 'hidden', fontFamily: FONT, color: WHITE,
     }}>
-      <AbsoluteFill style={{
-        backgroundImage: 'linear-gradient(rgba(81,152,194,.055) 1px, transparent 1px), linear-gradient(90deg, rgba(81,152,194,.055) 1px, transparent 1px)',
-        backgroundSize: '54px 54px',
-        maskImage: 'linear-gradient(90deg, transparent, black 17%, black 90%, transparent)',
-      }}/>
-      <div style={{
-        position: 'absolute', left: 240, top: 190, width: 850, height: 850,
-        borderRadius: '50%', border: '1px solid rgba(65,204,214,.095)',
-        boxShadow: 'inset 0 0 105px rgba(27,104,153,.095)', pointerEvents: 'none',
-      }}/>
-      <div style={{position: 'absolute', left: 90, top: 48, fontFamily: MONO, color: ACCENT, fontSize: 22, letterSpacing: 3}}>
-        NANITE  /  VIRTUALIZED GEOMETRY
-      </div>
-      <div style={{position: 'absolute', left: 88, top: 94, fontSize: 66, fontWeight: 800, letterSpacing: 0.5}}>
-        从 Mesh 到 Cluster DAG
-      </div>
-      <div style={{position: 'absolute', right: 88, top: 59, textAlign: 'right', fontFamily: MONO}}>
-        <div style={{color: ACCENT, fontSize: 21}}>VISUAL DEMO 01</div>
-        <div style={{color: MUTED, fontSize: 17, marginTop: 8}}>OFFLINE BUILD / 18 SEC</div>
-      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" style={{display:'block'}}>
+        <defs>
+          <filter id="line-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="9"/>
+          </filter>
+          <filter id="dot-glow" x="-80%" y="-80%" width="260%" height="260%">
+            <feGaussianBlur stdDeviation="4"/>
+          </filter>
+        </defs>
 
-      <div style={{
-        position: 'absolute', left: 82, top: 214,
-        width: 1168, height: 696, borderRadius: 22,
-        background: 'rgba(10,23,39,.62)', border: '1px solid rgba(111,165,202,.2)',
-        overflow: 'hidden',
-      }}>
-        <div style={{position:'absolute',left:31,top:25,zIndex:5,fontFamily:MONO,color:MUTED,fontSize:17,letterSpacing:1}}>
-          THREE.JS  /  PROCEDURAL MESH
-        </div>
-        <div style={{position:'absolute',right:30,top:25,zIndex:5,fontFamily:MONO,color:MUTED,fontSize:17}}>
-          FRAME {String(frame).padStart(4, '0')} / 0540
-        </div>
-        <div style={{
-          position:'absolute',left:0,top:0,width:'100%',height:'100%',
-          transform: `translateX(${-80 * meshShift}px) scale(${1 - 0.13 * meshShift})`,
-          transformOrigin:'center',
-        }}>
-          <ThreeCanvas
-            width={1168}
-            height={696}
-            camera={{fov: 43, position: [0, 0, 8.4]}}
-            style={{width:'100%',height:'100%'}}
-          >
-            <MeshWorld t={t}/>
-          </ThreeCanvas>
-        </div>
-        <div style={{position:'absolute',left:34,bottom:33,zIndex:6}}>
-          <div style={{fontFamily:MONO,color:step===3?'#ffbb70':ACCENT,fontSize:19,letterSpacing:1.2}}>
-            {s.en}
-          </div>
-          <div style={{fontSize:39,fontWeight:750,marginTop:6}}>{s.zh}</div>
-          <div style={{fontFamily:MONO,color:MUTED,fontSize:17,marginTop:10}}>{s.hint}</div>
-        </div>
-        <div style={{position:'absolute',bottom:0,left:0,width:`${t / 18 * 100}%`,height:3,background:ACCENT}}/>
-      </div>
+        <Surface triangles={fine} project={projector} opacity={initialAlpha}
+          fillColor={(tri) => blendHex(neutral, FINE[fineCluster(tri)], fineReveal)}
+          strokeOpacity={lerp(0.85, 0.42, groupBoundary)}/>
+        <ClusterText triangles={fine} classify={fineCluster} colors={FINE}
+          prefix="F" project={projector}
+          opacity={ease(3.15, 4.7, t) * (1 - ease(7.6, 8.5, t))}/>
+        <PolylineBoundary project={projector} t={t} opacity={groupBoundary}/>
+        <Simplification project={projector} t={t} opacity={simplifyAlpha}/>
+        <Surface triangles={coarse} project={projector} opacity={coarseAlpha}
+          fillColor={(tri) => blendHex(neutral, COARSE[coarseCluster(tri)], ease(18.0, 19.25, t))}/>
+        <ClusterText triangles={coarse} classify={coarseCluster} colors={COARSE}
+          prefix="C" project={projector}
+          opacity={ease(18.4, 19.2, t) * (1 - ease(20, 20.8, t))}/>
+        {t >= 19.7 && <MorphToDag t={t}/>}
 
-      <div style={{
-        position:'absolute',left:1274,top:214,width:557,height:696,
-        padding:'31px 36px',boxSizing:'border-box',borderRadius:22,
-        background:'rgba(10,23,39,.74)',border:'1px solid rgba(111,165,202,.2)',
-      }}>
-        <div style={{display:'flex',justifyContent:'space-between',fontFamily:MONO,fontSize:19}}>
-          <span style={{color:TEXT}}>BUILD PIPELINE</span>
-          <span style={{color:ACCENT}}>{String(step+1).padStart(2,'0')} / 06</span>
-        </div>
-        <div style={{height:1,background:'rgba(120,176,203,.18)',marginTop:23}}/>
-        <div style={{opacity:1-dag, position:'absolute',top:86,left:24,right:24,pointerEvents:'none'}}>
-          <BuildPipeline step={step}/>
-        </div>
-        <div style={{position:'absolute',top:99,left:35,right:35,pointerEvents:'none'}}>
-          <DagGraph t={t}/>
-        </div>
-        <div style={{position:'absolute',bottom:30,left:35,fontFamily:MONO,fontSize:15,color:MUTED}}>
-          ASSET BUILD   /   NOT RUNTIME
-        </div>
+        {t >= 9 && t < 18 && (
+          <g fontFamily={MONO} textAnchor="end" fontSize={30}>
+            <text x="1680" y="177" fill={QUIET}>TRIANGLES</text>
+            <text x="1680" y="246" fill={GOLD} fontSize={65}>
+              {32 - 2 * Math.min(8, Math.floor((t - 9) / 1.1))}
+            </text>
+            <text x="1680" y="291" fill={QUIET} fontSize={24}>
+              -2 / COLLAPSE
+            </text>
+          </g>
+        )}
+        {t > 23.85 && (
+          <g opacity={ease(23.85, 24.75, t)} fontFamily={MONO}
+            textAnchor="middle" fontSize={27} fill={GOLD}>
+            <text x="960" y="1010">
+              ONE GROUP REPLACEMENT  ·  {groupTransition.fineClusterIds.length} FINE → {groupTransition.coarseClusterIds.length} COARSE
+            </text>
+          </g>
+        )}
+      </svg>
+      <div style={{position:'absolute',top:52,left:90,fontFamily:MONO,
+        fontSize:22,letterSpacing:3,color:QUIET}}>
+        NANITE <span style={{color:CYAN}}> / </span> BUILDING A CLUSTER DAG
       </div>
-
-      <div style={{position:'absolute',left:90,bottom:85,fontFamily:MONO,color:MUTED,fontSize:17}}>
-        ILLUSTRATIVE GEOMETRY  /  NOT UE CAPTURE OR EDGE-COLLAPSE TRACE
-      </div>
-      <div style={{position:'absolute',right:90,bottom:85,fontFamily:MONO,color:TEXT,fontSize:22}}>
-        00:{String(Math.floor(t)).padStart(2,'0')}
-      </div>
-      <div style={{position:'absolute',left:90,right:90,bottom:50,height:5,borderRadius:4,background:'#21374b'}}>
-        <div style={{width:`${frame / 539 * 100}%`,height:'100%',background:ACCENT,borderRadius:4}}/>
-      </div>
+      <Annotation t={t}/>
     </AbsoluteFill>
   );
 };
