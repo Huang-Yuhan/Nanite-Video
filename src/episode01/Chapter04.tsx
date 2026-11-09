@@ -17,7 +17,7 @@ export const Episode01Chapter04:React.FC=()=>{
   const legal=smooth(30,32,t);
   const selected=t<35?'coarse':'fine';
   const swapFlash=Math.max(0,1-Math.abs(t-35)/1.0);
-  const introView=makeView(560,960,505,t);
+  const introView=makeView(415,960,486,t);
   return (
     <Scene>
       <Guide title="04   /   CLUSTER DEPENDENCY DAG"/>
