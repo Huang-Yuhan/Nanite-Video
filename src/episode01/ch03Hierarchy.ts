@@ -217,6 +217,9 @@ export function validateHierarchy(){
     if(separation+sphere.radius>coarseLODBounds.radius+1e-5)
       throw new Error('Parent LOD sphere must enclose child LOD spheres');
   }
+  for(let v=0;v<sourceVertices.length;v++)
+    if(Math.abs(quadricCostAtVertex(v,sourceVertices[v]))>1e-8)
+      throw new Error('A vertex must lie on all of its incident planes');
   if(!Number.isFinite(firstCollapseQEM)||firstCollapseQEM<0)
     throw new Error('Invalid demonstration QEM cost');\n  if(!Number.isFinite(hierarchyError.parent)||hierarchyError.parent<=0)
     throw new Error('No meaningful sample-based geometric error');
