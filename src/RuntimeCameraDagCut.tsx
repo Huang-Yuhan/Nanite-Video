@@ -64,8 +64,8 @@ function PatchMesh({patch, cut, zoom, flash}: {
     return colors[suffix];
   });
 
-  const boundary = perimeter.map(([x, y, z], idx) => {
-    const pt = project([x + patch.originX, y, z * patch.amplitude], zoom);
+  const boundary = perimeter.map(([x, y], idx) => {
+    const pt = project([x + patch.originX, y, 0], zoom);
     return (idx === 0 ? 'M' : 'L') + pt.x.toFixed(2) + ' ' + pt.y.toFixed(2);
   }).join(' ') + ' Z';
 
