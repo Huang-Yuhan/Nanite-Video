@@ -1,130 +1,138 @@
-/**
- * Deterministic teaching mesh for the first video demo.
- *
- * Fine: 4x4 grid = 32 triangles; four 2x2-cell clusters (8 tris each).
- * Coarse: center + all sixteen ORIGINAL boundary vertices = 16 triangles;
- * two coarse clusters (8 tris each).
- *
- * Both LODs have the EXACT same perimeter vertices / outer edges.
- * This is an illustrative precomputed LOD replacement, not an Unreal Engine
- * simplifier trace or a simulation of the actual Nanite cluster builder.
- */
+// A small, deterministic, boundary-preserving example for algorithm animation.
+// This is an illustrative manifold triangulation, NOT extracted from UE Nanite.
 export type Vec3 = readonly [number, number, number];
+export type Tri = readonly [number, number, number];
+export type Collapse = readonly [number, number];
 
-export type ClusterMesh = {
-  id: string;
-  color: string;
-  triangleCount: number;
-  vertices: number[];
-  edges: number[];
-};
-
-export type DemoData = {
-  fine: ClusterMesh[];
-  coarse: ClusterMesh[];
-  boundary: number[];
-  transition: {
-    fineClusterIds: string[];
-    coarseClusterIds: string[];
-  };
-};
-
-const FINE_COLORS = ['#4da9ff', '#32d1b2', '#ffbd65', '#bb8dff'];
-const COARSE_COLORS = ['#5bafff', '#ffb95c'];
-
-function point(x: number, y: number): Vec3 {
-  const u = (x + 2) / 4;
-  const v = (y + 2) / 4;
-  const boundaryEnvelope = Math.sin(Math.PI * u) * Math.sin(Math.PI * v);
-  const z = 0.72 * boundaryEnvelope *
-    (1 + 0.22 * Math.sin(x * 1.9 + y * 0.8));
+export const positions: Vec3[] = Array.from({length: 25}, (_, id) => {
+  const x = id % 5 - 2;
+  const y = Math.floor(id / 5) - 2;
+  // The perimeter is flat. Interior vertices have a little depth.
+  const z = 0.65 * Math.sin(Math.PI * (x + 2) / 4) *
+    Math.sin(Math.PI * (y + 2) / 4) * (1 + 0.19 * Math.sin(1.7 * x + 0.8 * y));
   return [x, y, z];
+});
+
+const initial: Tri[] = [];
+for (let row = 0; row < 4; row++) {
+  for (let col = 0; col < 4; col++) {
+    const a = row * 5 + col;
+    const b = a + 1;
+    const d = a + 5;
+    const c = d + 1;
+    initial.push([a, b, c], [a, c, d]);
+  }
 }
 
-type BuildingCluster = ClusterMesh & {edgeKeys: Set<string>};
+// The eight edge collapses reduce 32 triangles to 16 while leaving every
+// perimeter vertex and perimeter edge intact. Each pair is [removed, retained].
+// Verified against internal-edge incidence, the link condition, and oriented area.
+export const collapses: Collapse[] = [
+  [6, 12], [7, 12], [11, 12], [13, 12],
+  [8, 12], [17, 12], [16, 12], [18, 12],
+];
 
-function piece(id: string, color: string): BuildingCluster {
-  return {id, color, triangleCount: 0, vertices: [], edges: [], edgeKeys: new Set()};
-}
+const onBoundary = (id: number): boolean => {
+  const x = id % 5;
+  const y = Math.floor(id / 5);
+  return x === 0 || x === 4 || y === 0 || y === 4;
+};
 
-function vertexKey(p: Vec3): string {
-  return p.map((v) => v.toFixed(6)).join(',');
-}
+const key = (a: number, b: number): string =>
+  a < b ? `${a}:${b}` : `${b}:${a}`;
 
-function addTriangle(mesh: BuildingCluster, a: Vec3, b: Vec3, c: Vec3) {
-  mesh.vertices.push(...a, ...b, ...c);
-  mesh.triangleCount += 1;
-  for (const [p, q] of [[a, b], [b, c], [c, a]] as const) {
-    const ordered = [vertexKey(p), vertexKey(q)].sort();
-    const key = ordered.join('|');
-    if (!mesh.edgeKeys.has(key)) {
-      mesh.edgeKeys.add(key);
-      mesh.edges.push(...p, ...q);
+const neighbours = (triangles: Tri[], index: number): Set<number> => {
+  const out = new Set<number>();
+  for (const tri of triangles) {
+    if (tri.includes(index)) {
+      for (const v of tri) if (v !== index) out.add(v);
     }
   }
+  return out;
+};
+
+const orient = ([a, b, c]: Tri): number => {
+  const pa = positions[a];
+  const pb = positions[b];
+  const pc = positions[c];
+  return (pb[0] - pa[0]) * (pc[1] - pa[1]) -
+    (pb[1] - pa[1]) * (pc[0] - pa[0]);
+};
+
+function collapseEdge(triangles: Tri[], [removed, retained]: Collapse): Tri[] {
+  if (onBoundary(removed) || onBoundary(retained)) {
+    throw new Error('The demo must not collapse perimeter vertices');
+  }
+
+  const shared = triangles.filter((tri) => tri.includes(removed) && tri.includes(retained));
+  if (shared.length !== 2) throw new Error('Not an interior manifold edge');
+
+  const common = [...neighbours(triangles, removed)]
+    .filter((v) => neighbours(triangles, retained).has(v)).sort((a, b) => a - b);
+  const opposite = shared.flatMap((tri) => tri.filter((v) => v !== removed && v !== retained))
+    .sort((a, b) => a - b);
+  if (common.join(',') !== opposite.join(',')) throw new Error('Link condition failed');
+
+  const result = triangles
+    .map((tri) => tri.map((v) => v === removed ? retained : v) as unknown as Tri)
+    .filter((tri) => new Set(tri).size === 3);
+
+  if (result.length !== triangles.length - 2 ||
+      result.some((tri) => orient(tri) <= 0)) {
+    throw new Error('Invalid triangle count or triangle flip');
+  }
+  return result;
 }
 
-function finish(meshes: BuildingCluster[]): ClusterMesh[] {
-  return meshes.map(({edgeKeys: _unused, ...mesh}) => mesh);
-}
+const boundaryLoop = [
+  0, 1, 2, 3, 4, 9, 14, 19, 24, 23, 22, 21, 20, 15, 10, 5,
+];
 
-function makeFine(): ClusterMesh[] {
-  const groups = FINE_COLORS.map((color, i) => piece('F' + i, color));
-  for (let y = 0; y < 4; y++) {
-    for (let x = 0; x < 4; x++) {
-      const g = (x >= 2 ? 1 : 0) + (y >= 2 ? 2 : 0);
-      const a = point(x - 2, y - 2);
-      const b = point(x - 1, y - 2);
-      const c = point(x - 1, y - 1);
-      const d = point(x - 2, y - 1);
-      addTriangle(groups[g], a, b, c);
-      addTriangle(groups[g], a, c, d);
+function verifyBoundary(tris: Tri[]) {
+  const incidence = new Map<string, number>();
+  for (const tri of tris) {
+    for (const [a, b] of [[tri[0], tri[1]], [tri[1], tri[2]], [tri[2], tri[0]]]) {
+      const k = key(a, b);
+      incidence.set(k, (incidence.get(k) ?? 0) + 1);
     }
   }
-  return finish(groups);
-}
-
-function perimeter(): Vec3[] {
-  const loop: Vec3[] = [];
-  for (let x = -2; x <= 2; x++) loop.push(point(x, -2));
-  for (let y = -1; y <= 2; y++) loop.push(point(2, y));
-  for (let x = 1; x >= -2; x--) loop.push(point(x, 2));
-  for (let y = 1; y >= -1; y--) loop.push(point(-2, y));
-  return loop;
-}
-
-function makeCoarse(boundary: Vec3[]): ClusterMesh[] {
-  const groups = COARSE_COLORS.map((color, i) => piece('C' + i, color));
-  const center = point(0, 0);
-  for (let i = 0; i < boundary.length; i++) {
-    const a = boundary[i];
-    const b = boundary[(i + 1) % boundary.length];
-    const g = (a[0] + b[0]) / 2 >= 0 ? 0 : 1;
-    addTriangle(groups[g], center, a, b);
+  const exposed = new Set([...incidence].filter(([, count]) => count === 1).map(([k]) => k));
+  const expected = new Set(boundaryLoop.map((v, i) => key(v, boundaryLoop[(i + 1) % boundaryLoop.length])));
+  if (exposed.size !== expected.size || [...expected].some((k) => !exposed.has(k))) {
+    throw new Error('Boundary must stay identical in every LOD');
   }
-  return finish(groups);
 }
 
-function makeDemo(): DemoData {
-  const border = perimeter();
-  const fine = makeFine();
-  const coarse = makeCoarse(border);
-  const fineCount = fine.reduce((sum, p) => sum + p.triangleCount, 0);
-  const coarseCount = coarse.reduce((sum, p) => sum + p.triangleCount, 0);
-  if (border.length !== 16 || fineCount !== 32 || coarseCount !== 16 ||
-      fine.some((p) => p.triangleCount !== 8) ||
-      coarse.some((p) => p.triangleCount !== 8)) {
-    throw new Error('Invalid illustrative Cluster DAG teaching mesh');
-  }
-  return {
-    fine,
-    coarse,
-    boundary: [...border, border[0]].flat(),
-    transition: {
-      fineClusterIds: fine.map((p) => p.id),
-      coarseClusterIds: coarse.map((p) => p.id),
-    },
-  };
+export const snapshots: Tri[][] = [initial];
+verifyBoundary(initial);
+for (const edge of collapses) {
+  const next = collapseEdge(snapshots[snapshots.length - 1], edge);
+  verifyBoundary(next);
+  snapshots.push(next);
+}
+if (snapshots.at(-1)?.length !== 16) throw new Error('Expected 16 coarse triangles');
+
+export const fineCluster = (tri: Tri): number => {
+  const x = tri.reduce((sum, id) => sum + positions[id][0], 0) / 3;
+  const y = tri.reduce((sum, id) => sum + positions[id][1], 0) / 3;
+  return (x >= 0 ? 1 : 0) + (y >= 0 ? 2 : 0);
+};
+
+export const coarseCluster = (tri: Tri): number => {
+  const x = tri.reduce((sum, id) => sum + positions[id][0], 0) / 3;
+  return x >= 0 ? 1 : 0;
+};
+
+export const fine = snapshots[0];
+export const coarse = snapshots[snapshots.length - 1];
+
+if ([0, 1, 2, 3].some((id) => fine.filter((t) => fineCluster(t) === id).length !== 8) ||
+    [0, 1].some((id) => coarse.filter((t) => coarseCluster(t) === id).length !== 8)) {
+  throw new Error('Expected 4x8 fine and 2x8 coarse triangles');
 }
 
-export const demoData = makeDemo();
+export const groupTransition = {
+  fineClusterIds: ['F0', 'F1', 'F2', 'F3'],
+  coarseClusterIds: ['C0', 'C1'],
+};
+export const perimeter = boundaryLoop.map((id) => positions[id]);
