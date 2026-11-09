@@ -1,6 +1,6 @@
 # Nanite 技术解析（一）：从 Mesh 到 Cluster DAG
 
-> 状态：脚本技术审稿 V0.4（2026-11-09）；**不是最终逐字录音稿**。本 PR 只包含文档，不修改视频代码。
+> 状态：脚本技术审稿 V0.5（2026-11-09）；**不是最终逐字录音稿**。本 PR 只包含文档，不修改视频代码。
 >
 > 受众：游戏引擎与实时渲染程序员；默认了解 Mesh、LOD、Triangle、GPU Rasterization。
 >
@@ -22,8 +22,8 @@
 | 02 Triangle Clustering | 如何让 Cluster 大小受限且尽量减少跨 Cluster 边？ | 得到初始 fine Clusters |
 | 03 Grouping & Simplification | 独立简化会有什么问题？怎样让简化更自由？ | 得到一组等边界的 coarse Clusters |
 | 04 为什么产生 DAG？ | 为什么 Merge / Split 不能用普通父子 Tree 表达？ | 生成递归 LOD 依赖，理解组级替换 |
-| 05 Geometric Error | 如何评估简化损失并支持 Runtime 选 LOD？ | 误差、包围信息与单调性 |
-| 06 完整回顾与衔接 | Runtime 会拿到什么，下一步要解决什么？ | 接第二期 Camera / Cut Selection |
+| 05 Geometric Error & Cut | 如何让 Error / Bounds 真正驱动视角相关的 LOD 选择？ | 单调投影误差、Camera 靠近、DAG 合法 Cut 变化 |
+| 06 完整回顾与衔接 | 已解释为什么选某种 LOD，那么 GPU 怎样高效找到并渲染？ | 接第二期 Hierarchy Traversal、Culling、Rasterization |
 
 **无目标片长、无硬性时码。** 每章完整讲清一个问题；讲完再停。需要让观众看清的 Grouping、Edge Collapse、多对多依赖和 Error / Bounds 动画可以保留自然观察时间，旁白不必一直说话。制作 animatic 后只检查是否冗余、是否理解充分，不为凑时间剪掉必要的技术内容。
 
@@ -34,8 +34,8 @@
 3. **第三章只解决几何构建**：分别简化会导致共享边潜在不匹配；若锁定全部 Cluster 外边界，又约束了简化；通过新一轮以 Cluster 为图节点的分区，把相邻 Cluster 合并成 Group；锁住 Group 的外轮廓，在组内简化并重新分簇。
 4. **第四章只讲层级关系**：组级替换是 4 fine ↔ 2 coarse，而不是「每个 fine 各有一个唯一 coarse parent」。重复构建让旧边界有机会变为新 Group 内部边。引出合法 Cut 的概念，但不讲完整 GPU 选择算法。
 5. **UE 5.8.4 源码核对**：`ClusterDAG.cpp` 的 `ReduceGroup` 汇总 children 的 `LODError`、`LODBounds`，新生成的 coarse parents 共享合并后的 LOD 数据。不要误说 fine children 的 LOD Error 原本都相同。
-6. **第五章以 Runtime 所需 Error/Bounds 为中心**：QEM 只是解释简化代价的入口；区分简化器内部代价、构建层级误差与投影后的屏幕误差，强调沿层级的保守单调性。
-7. **第六章总结“资产构建产出”**：聚焦分层 cluster 几何、依赖关系、误差和 bounds；压缩、Streaming、Runtime Culling、硬件/软件栅格化留到第二期。
+6. **第五章是 Error/Bounds 到 Runtime 的闭环**：QEM 只是解释简化代价的入口；区分内部 cost、层级误差和屏幕误差；再用**临时左右同步画面**，左边 Camera 靠近同一 Mesh、右边 DAG 合法 Cut 局部替换，说明 Error 究竟如何决定所需几何精度。
+7. **第六章总结“构建信息如何服务运行时选择”**：聚焦分层 Cluster 几何、依赖关系、误差和 Bounds → Camera 下的概念性 LOD Cut；压缩、Streaming、真正 GPU 并行遍历/Culling、硬件/软件栅格化留到第二期。
 
 ## 声画语言
 
@@ -46,6 +46,7 @@
 - SVG / 2D 图解与 3D Mesh 来源于相同的 Cluster/Group 数据，几何逐渐抽象成节点。
 - 不加入固定章节侧栏、状态仪表盘、角标；只在必要时出现一行术语、短公式或几何计数器。
 - 旁白、动画要一一对应；不把一整段旁白压在静态画面上。
+- 第五章末尾唯一的双视窗实验由镜头内对象连续移动形成：左 Camera + Mesh，右 DAG Cut。**这不是贯穿全片的 PPT 侧栏**；右边不画 BVH，避免混淆构建依赖和运行时遍历结构。
 
 ## 贯穿全片的数据资产
 
@@ -54,12 +55,13 @@
 - **Cluster / Group IDs**：从几何投影到 Graph、DAG 时保持 ID 稳定。
 - **Transition records**：某次 Grouping 的 fine set、coarse set、边界与简化前后几何，用于组级替换动画。
 - **Error records**：Cluster/Group 层级误差及 bounds，用于第五章。
+- **LOD selection records**：给 Camera 轨迹、误差阈值及每一状态下完整、合法的 Cluster 选择集合；以相同 GroupTransition 数据驱动左 Mesh 与右 DAG，确保选中集合可验证。
 
 动画数据优先使用可验证的教学输入；计划接入 UE 导出数据时，需要区分教学示意与真实引擎结果。
 
 ## 与第二期的边界
 
-第二期暂定《Nanite 原理解析（二）：GPU 如何选择并渲染几何？》：从相同 DAG 和 Camera 开场，讲运行时 Hierarchy/BVH 遍历与 Culling、屏幕空间 LOD Cut、硬件/软件 Rasterization、Visibility Buffer、Streaming。第一期只埋伏笔，不提前深入实现。
+第二期暂定《Nanite 原理解析（二）：GPU 如何高效选择并渲染几何？》：从第一期的 Camera / DAG Cut 结果出发，深入讲 Runtime Hierarchy/BVH 遍历、可见性剔除与 GPU 并行选择、硬件/软件 Rasterization、Visibility Buffer、Streaming。第一期**会展示一个概念性的 Runtime LOD Cut 联动实验**，但不讲完整 GPU 执行路径。
 
 ## 本 PR 的评审重点
 
