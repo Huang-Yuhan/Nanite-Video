@@ -11,7 +11,11 @@
     "render:episode01": "remotion render src/index.ts Episode01Workprint out/episode-01-workprint.mp4",
     "still:episode01": "remotion still src/index.ts Episode01Workprint out/episode-01-clusters.png --frame=990",
     "still:episode01-local": "remotion still src/index.ts Episode01Workprint out/episode-01-local-lod.png --frame=810",
-    "validate:episode01": "node --experimental-strip-types src/episode01/ch01Geometry.ts"
+    "validate:episode01": "node --experimental-strip-types src/episode01/ch01Geometry.ts",
+    "validate:chapter02": "node --experimental-strip-types src/episode01/ch02Graph.ts",
+    "still:episode01-graph": "remotion still src/index.ts Episode01Workprint out/episode-01-graph.png --frame=1590",
+    "still:episode01-partition": "remotion still src/index.ts Episode01Workprint out/episode-01-partition.png --frame=1790",
+    "still:episode01-clusters-ch02": "remotion still src/index.ts Episode01Workprint out/episode-01-ch02-clusters.png --frame=2090"
   },
   "dependencies": {
     "react": "^19.0.0",
