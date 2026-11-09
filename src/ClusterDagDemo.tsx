@@ -193,10 +193,10 @@ function Simplification({t, project, opacity}: {
 }
 
 const fineNodes: Point[] = [
-  {x: 420, y: 420}, {x: 780, y: 420},
-  {x: 1140, y: 420}, {x: 1500, y: 420},
+  {x: 420, y: 390}, {x: 780, y: 390},
+  {x: 1140, y: 390}, {x: 1500, y: 390},
 ];
-const coarseNodes: Point[] = [{x: 740, y: 796}, {x: 1180, y: 796}];
+const coarseNodes: Point[] = [{x: 740, y: 680}, {x: 1180, y: 680}];
 
 function MorphToDag({t}: {t: number}) {
   const arrive = ease(20.25, 21.3, t);
@@ -254,7 +254,7 @@ function MorphToDag({t}: {t: number}) {
       <g opacity={circle}>
         <text x={960} y={277} textAnchor="middle" fontSize={29}
           letterSpacing={4} fontFamily={MONO} fill={QUIET}>FINE  ·  HIGH DETAIL</text>
-        <text x={960} y={913} textAnchor="middle" fontSize={29}
+        <text x={960} y={822} textAnchor="middle" fontSize={29}
           letterSpacing={4} fontFamily={MONO} fill={QUIET}>COARSE  ·  LOW DETAIL</text>
         {nodes.map((p, i) => {
           const isFine = i < fineNodes.length;
