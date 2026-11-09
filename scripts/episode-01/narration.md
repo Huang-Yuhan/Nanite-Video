@@ -1,4 +1,4 @@
-# Episode 01 · Narration Draft V0.3（技术审稿）
+# Episode 01 · Narration Draft V0.4（UE 5.8.4 核对）
 
 > 对象：游戏引擎 / 图形学程序员。中文配音，不设固定总时长。这是供讨论的**可直接试读的旁白初稿**。具体镜头长度由实际讲解速度、必要的停顿和算法动画的可读性决定；QEM、Error / Bounds 等内容允许旁白停顿后让图形独立演示。
 >
@@ -122,7 +122,7 @@ Cluster 本来就不大。如果大量边界始终被固定，简化器能调整
 
 我们又遇到了 Graph Partitioning。
 
-只是这一次，图节点不是 Triangle，而是 Cluster。两个 Cluster 共享的三角形边越多，它们之间的连接权重就越大。
+只是这一次，图节点不是 Triangle，而是 Cluster。两个 Cluster 共享的三角形边越多，它们之间的连接通常就越重要。实际构建器还会调整不同连接的权重，而不只是直接使用共享边数量。
 
 我们希望在大小等约束下，尽量减少跨 Group 的边界总成本——这样需要固定的外边界就更少。
 
@@ -244,7 +244,7 @@ Cluster 本来就不大。如果大量边界始终被固定，简化器能调整
 
 如果只保存当前这一次的新增误差，就可能低估粗层级与原始模型的偏差。
 
-因此构建层级时，我们必须保守地考虑之前已经累积的误差。
+因此构建层级时，我们必须保守地考虑之前已经累积的误差。这里不是把每个平方 QEM cost 简单求和；在 UE 5.8.4 的 Group 构建中，父级 LOD Error 会取子节点 Error 和本轮 Simplify Error 的最大值。
 
 [动画：一次简化在已有误差之上引入新的偏差；数字沿 DAG 向上更新。此处数字是教学数据，不宣称与 UE 具体算法相同。]
 
@@ -252,11 +252,11 @@ Cluster 本来就不大。如果大量边界始终被固定，简化器能调整
 
 对同一个 Group 来说，fine Clusters 必须能够作为一个整体被 coarse Clusters 替代。
 
-如果每个 Cluster 使用不同的误差或者不同的投影 Bounds，就可能各自得到不同的选择结果。
+在 UE 5.8.4 的构建代码里，fine Clusters 各自带有原来的 LOD Error 和 LOD Bounds。构建一个新的 Group 时，我们会汇总这些子节点的误差和误差包围球。
 
-所以，在经典 Nanite 方案中，同一个 Group 的成员使用相同的**组级误差和联合包围球**作为一致决策的输入。
+简化完成后，本轮生成的所有 coarse Clusters 将保存**相同的父级 LOD Error 和 LOD Bounds**。这样，它们就能作为一个共同依赖的替代集合进行 LOD 判断，而不是各自随意选择。
 
-[动画：四个 fine 节点先分别出现不同的小包围球，再形成一个共享的 Group Error / Sphere；四个节点同时响应阈值。]
+[动画：先让四个 fine Clusters 各自显示原有的 LODBounds 和 LODError；Group 构造一个包住它们的联合 LODBounds，并计算保守的 ParentLODError；最后生成两个 coarse Clusters，两个父节点同时获得完全相同的误差球和误差值。需要区分几何 SphereBounds 与误差 LODBounds。]
 
 但即使我们让粗层级保存的误差数值越来越大，问题也还没有完全解决。
 
