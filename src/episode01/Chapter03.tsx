@@ -14,7 +14,7 @@ export const CHAPTER_03_FPS=30;
 
 export const Episode01Chapter03:React.FC=()=>{
   const t=useCurrentFrame()/CHAPTER_03_FPS;
-  const view=makeView(615,960,498,t);
+  const view=makeView(420,960,480,t);
   const fineAlpha=(1-smooth(11.5,13,t))*smooth(0,1.2,t);
   const simplifyAlpha=smooth(11.5,13,t)*(1-smooth(32,34.6,t));
   const coarseAlpha=smooth(32.1,34.5,t);
