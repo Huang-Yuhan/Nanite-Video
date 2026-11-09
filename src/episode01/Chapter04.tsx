@@ -20,7 +20,7 @@ export const Episode01Chapter04:React.FC=()=>{
   const introView=makeView(415,960,486,t);
   return (
     <Scene>
-      <Guide title="04   /   CLUSTER DEPENDENCY DAG"/>
+      <Guide title="04   /   CLUSTER DEPENDENCY DAG · SINGLE GROUP EXAMPLE"/>
       <g opacity={meshAlpha}>
         <PatchGeometry level="fine" view={introView} colors wire/>
         <Exterior view={introView} opacity={0.5}/>
@@ -73,7 +73,7 @@ export const Episode01Chapter04:React.FC=()=>{
         sub="一次简化：四个 Fine 共同生成两个 Coarse"/>
       <Cue t={t} a={9} b={19.5}
         headline="MANY-TO-MANY DEPENDENCIES"
-        sub="无法为每个 Cluster 指定唯一的父节点"/>
+        sub="这是一个 Group 的 4→2 多对多依赖示例，不代表完整多层 DAG"/>
       <Cue t={t} a={19.5} b={30.5}
         headline="LEGAL LOD CUT"
         sub="随意混用局部 Fine 和 Coarse，可能造成缺失或重叠"/>
