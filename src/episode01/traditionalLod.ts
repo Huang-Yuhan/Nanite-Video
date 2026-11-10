@@ -1,39 +1,23 @@
 /**
- * Synthetic rock-like teaching mesh, independent from the rock-wall asset.
- * All four LODs sample the same deterministic parametric surface.
- * Not a captured or cooked Unreal Engine mesh.
+ * Poly Haven Moon Rock 02: the author's four existing LOD meshes.
+ * Shared coordinate normalization only; no mesh simplification.
  */
+import asset from './assets/moonRockLods.json' with {type:'json'};
 export type LodVertex = readonly [number,number,number];
-export type LodTriangle = readonly [LodVertex,LodVertex,LodVertex];
+export type LodUv = readonly [number,number];
+export type LodTriangle = readonly [number,number,number];
 export type TraditionalLodMesh = {
-  level:number; triangles:readonly LodTriangle[]; triangleCount:number;
+  level:number; positions:readonly LodVertex[];
+  triangles:readonly LodTriangle[]; triangleCount:number;
+  uv:readonly (readonly [LodUv,LodUv,LodUv])[];
 };
-const subdivisions = [[32,16],[24,12],[16,8],[8,4]] as const;
-function surface(theta:number,phi:number):LodVertex {
-  const ripple=Math.sin(theta*5+phi*2.1)*Math.cos(phi*7)*0.095+
-    Math.sin(theta*11-phi*3.2)*Math.sin(phi*5)*0.045+
-    Math.cos(theta*3+phi*4)*0.08;
-  const r=1+ripple;
-  return [r*Math.sin(phi)*Math.cos(theta),r*Math.cos(phi)*1.15,
-    r*Math.sin(phi)*Math.sin(theta)*0.85];
-}
-function build(level:number):TraditionalLodMesh {
-  const [longitude,latitude]=subdivisions[level];
-  const triangles:LodTriangle[]=[];
-  for(let y=0;y<latitude;y++) {
-    for(let x=0;x<longitude;x++) {
-      const a=surface(x*2*Math.PI/longitude,y*Math.PI/latitude);
-      const b=surface((x+1)*2*Math.PI/longitude,y*Math.PI/latitude);
-      const c=surface((x+1)*2*Math.PI/longitude,(y+1)*Math.PI/latitude);
-      const d=surface(x*2*Math.PI/longitude,(y+1)*Math.PI/latitude);
-      if(y!==0)triangles.push([a,b,c]);
-      if(y!==latitude-1)triangles.push([a,c,d]);
-    }
-  }
-  return {level,triangles,triangleCount:triangles.length};
-}
 export const traditionalLods:readonly TraditionalLodMesh[]=
-  subdivisions.map((_,level)=>build(level));
+  asset.lods.map(lod=>({
+    level:lod.level, positions:lod.positions as unknown as LodVertex[],
+    triangles:lod.triangles as unknown as LodTriangle[],
+    uv:lod.uv as unknown as [LodUv,LodUv,LodUv][],
+    triangleCount:lod.triangles.length,
+  }));
 /** Continuous camera motion with discrete LOD selection. */
 export const approachProgress=(t:number):number=>{
   const s=Math.max(0,Math.min(1,t));
@@ -46,6 +30,23 @@ export function validateTraditionalLods():void {
   if(traditionalLods.length!==4)throw new Error('Need exactly four levels');
   for(let i=0;i<4;i++) {
     const n=traditionalLods[i].triangleCount;
+    const lod=traditionalLods[i];
+    if(lod.level!==i||n!==[3304,1652,826,412][i])
+      throw new Error('Author-supplied LOD identity/count changed');
+    if(lod.positions.some(v=>v.length!==3||v.some(x=>!Number.isFinite(x))))
+      throw new Error('Invalid model coordinates');
+    if(lod.uv.length!==n)throw new Error('Missing face UVs');
+    for(const [j,tri] of lod.triangles.entries()){
+      if(tri.length!==3||new Set(tri).size!==3||tri.some(v=>
+        !Number.isInteger(v)||v<0||v>=lod.positions.length))
+        throw new Error('Invalid triangle indices');
+      if(lod.uv[j].length!==3||lod.uv[j].some(v=>
+        v.length!==2||v.some(x=>!Number.isFinite(x))))throw new Error('Invalid UVs');
+      const [a,b,c]=tri.map(v=>lod.positions[v]);
+      const ab=b.map((v,k)=>v-a[k]),ac=c.map((v,k)=>v-a[k]);
+      if(Math.hypot(ab[1]*ac[2]-ab[2]*ac[1],ab[2]*ac[0]-ab[0]*ac[2],
+        ab[0]*ac[1]-ab[1]*ac[0])<1e-10)throw new Error('Degenerate triangle');
+    }
     if(n<=0||!Number.isInteger(n))throw new Error('Invalid triangle count');
     if(i>0&&n>=traditionalLods[i-1].triangleCount)
       throw new Error('Triangle count must decrease as LOD index grows');

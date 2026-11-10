@@ -1,5 +1,5 @@
 import React from 'react';
-import {traditionalLods} from '../traditionalLod';
+export {RockModel} from './RockModel';
 
 import {
   STRIPS, ROWS, WORLD_LEFT, WORLD_RIGHT, WORLD_BOTTOM, WORLD_TOP,
@@ -149,33 +149,6 @@ export function ClusterEdges({view, opacity}: {view: View; opacity: number}) {
 }
 
 
-export function RockModel({level,cx,cy,size,opacity=1}:{
-  level:number;cx:number;cy:number;size:number;opacity?:number;
-}){
-  const yaw=0.48,pitch=-0.12;
-  const projectRock=(v:readonly [number,number,number])=>{
-    const [x,y,z]=v;
-    const rx=x*Math.cos(yaw)+z*Math.sin(yaw);
-    const rz=-x*Math.sin(yaw)+z*Math.cos(yaw);
-    const ry=y*Math.cos(pitch)-rz*Math.sin(pitch);
-    const depth=y*Math.sin(pitch)+rz*Math.cos(pitch);
-    return {x:cx+rx*size,y:cy-ry*size,z:depth};
-  };
-  const tris=traditionalLods[level].triangles.map((tri,index)=>{
-    const a=projectRock(tri[0]),b=projectRock(tri[1]),c=projectRock(tri[2]);
-    const ux=b.x-a.x,uy=b.y-a.y,vx=c.x-a.x,vy=c.y-a.y;
-    const shade=Math.max(0.18,Math.min(0.86,0.46+(ux*vy-uy*vx)/(size*size)*0.16));
-    return {index,depth:(a.z+b.z+c.z)/3,
-      points:[a,b,c].map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' '),
-      shade};
-  }).sort((a,b)=>a.depth-b.depth);
-  return <g opacity={opacity}>
-    {tris.map(tri=><polygon key={tri.index} points={tri.points}
-      fill={'hsl(192 11% '+(25+tri.shade*33).toFixed(1)+'%)'}
-      stroke={INK} strokeOpacity={0.34} strokeWidth={0.7}
-      strokeLinejoin="round"/>)}
-  </g>;
-}
 export function BottomLine({text,opacity=1}: {text:string;opacity?:number}){
   return <text x={960} y={996} fontFamily={FONT} fontSize={34}
     textAnchor="middle" fill={INK} opacity={opacity}>{text}</text>;

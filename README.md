@@ -26,7 +26,7 @@ npm run render:episode01            # 1920 × 1080 完整分辨率
 
 | 顺序 | 镜头 | 当前时长 |
 | --- | --- | --- |
-| 00 | 空背景和解说文字 | 5 秒 |
+| 00 | 空背景与三段引入字幕：三角形开销、远处细节、引出 LOD | 15 秒 |
 | 01 | 同一模型的四级传统 LOD | 8 秒 |
 | 02 | 相机由远到近；右侧 LOD List 半透明框高亮 | 15 秒 |
 | 03 | 回到岩壁，解释传统 whole-mesh LOD 局限 | 21 秒 |
@@ -51,7 +51,7 @@ src/
       Timeline.ts            # 镜头排列及其秒数：优先改这里
       Shots.tsx              # 六个镜头的动画与文字
       Visuals.tsx            # 岩壁、模型、投影、公共绘制
-    traditionalLod.ts        # 程序化四级 LOD 和切换验证
+    traditionalLod.ts        # 真实岩石四级 LOD 数据和切换验证
     ch01Geometry.ts          # 多章共用的教学岩壁数据
     Chapter02.tsx            # Triangle clustering
     ch02Graph.ts             # Triangle adjacency/partition 数据与验证
@@ -66,7 +66,7 @@ src/
 
 ## 六章内容及技术边界
 
-1. **传统 LOD → Nanite 动机**：展示离散 whole-mesh LOD、局部几何需求、屏幕像素原则；四级教学模型并非来自 Unreal 的实际 LOD 工具
+1. **传统 LOD → Nanite 动机**：展示离散 whole-mesh LOD、局部几何需求、屏幕像素原则；传统 LOD 镜头使用 Poly Haven 的 Moon Rock 02 实物扫描资产及作者已有的 LOD0–3（3304 / 1652 / 826 / 412 三角形），未自行简化。来源、许可和导出方式见 [`assets/models/moon-rock-02/`](assets/models/moon-rock-02/)。后续岩壁仍为教学几何。
 2. **Triangle Clustering**：展示真实共享边构造的 Triangle Adjacency Graph 与教学分区，不冒称 METIS 的实际划分结果
 3. **Grouping & Simplification**：四个 Fine 聚合、锁 Group 外边界、八次拓扑验证的 Collapse、再划为两个 Coarse
 4. **Cluster DAG**：先讲单 Group 的 4→2，再用独立构造的多层依赖示例展示合法 Cut；不把 DAG 当成运行时 BVH

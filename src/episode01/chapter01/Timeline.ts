@@ -9,7 +9,7 @@
  */
 export const EPISODE_01_FPS=30;
 export const CHAPTER_01_SHOTS=[
-  {id:'intro',name:'00 · Opening / narration',seconds:5},
+  {id:'intro',name:'00 · Opening / narration',seconds:15},
   {id:'versions',name:'01 · Four traditional LODs',seconds:8},
   {id:'approach',name:'02 · Camera / LOD List',seconds:15},
   {id:'wall',name:'03 · Whole-mesh limitation',seconds:21},

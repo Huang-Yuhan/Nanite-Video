@@ -1,7 +1,7 @@
 import React from 'react';
 import {AbsoluteFill,useCurrentFrame} from 'remotion';
 import {traditionalLods,approachProgress,lodForApproach} from '../traditionalLod';
-import {wallMeshes,type WallMode} from '../ch01Geometry';
+import {type WallMode} from '../ch01Geometry';
 import {
   W,H,BASE,INK,MUTED,MONO,BottomLine,RockModel,TriangleSurface,
   ClusterEdges,viewAt,smooth,lerp,
@@ -27,12 +27,21 @@ const Stage:React.FC<{children:React.ReactNode;caption:string;opacity?:number}>=
 /** 00. No image yet: the narration introduces the problem. */
 export const Opening:React.FC=()=>{
   const {time,duration}=useShotTime('intro');
-  const opacity=smooth(0.4,1.8,time)*(1-smooth(duration-0.7,duration,time));
-  return <Stage caption="对于远处的物体，我们通常不需要它的全部几何细节。"
+  const captions=[
+    '模型表面越复杂，通常就需要越多的三角形来表现。',
+    '但当物体远离摄像机，很多细节在屏幕上已经难以分辨。',
+    '这时，我们还需要为这些看不见的细节，保留全部三角形吗？',
+  ];
+  const beatDuration=duration/captions.length;
+  const beat=Math.min(captions.length-1,Math.floor(time/beatDuration));
+  const beatTime=time-beat*beatDuration;
+  const opacity=smooth(0.2,0.7,beatTime)*
+    (1-smooth(beatDuration-0.5,beatDuration,beatTime));
+  return <Stage caption={captions[beat]}
     opacity={opacity}>{null}</Stage>;
 };
 
-/** 01. The same parametric rock, at four decreasing triangle budgets. */
+/** 01. The same scanned rock, using its four author-supplied LOD meshes. */
 export const TraditionalVersions:React.FC=()=>{
   const {time,duration}=useShotTime('versions');
   const opacity=smooth(0,1.0,time)*(1-smooth(duration-0.7,duration,time));
@@ -47,7 +56,7 @@ export const TraditionalVersions:React.FC=()=>{
             textAnchor="middle" fontSize={29}>{'LOD'+i}</text>
           <text x={x} y={779} fill={MUTED} fontFamily={MONO}
             textAnchor="middle" fontSize={22}>
-            {traditionalLods[i].triangleCount+' triangles'}
+            {traditionalLods[i].triangleCount}
           </text>
         </g>;
       })}
@@ -69,12 +78,6 @@ export const CameraAndLodList:React.FC=()=>{
       <line x1={1280} y1={175} x2={1280} y2={850}
         stroke={MUTED} strokeWidth={1} opacity={0.38}/>
       <RockModel level={level} cx={660} cy={490} size={size}/>
-      <text x={116} y={136} fill={MUTED} fontFamily={MONO}
-        fontSize={22}>Camera</text>
-      <text x={116} y={817} fill={MUTED} fontFamily={MONO}
-        fontSize={22}>{'距离逐渐缩短   '+(16-12*progress).toFixed(1)}</text>
-      <text x={1405} y={270} fill={MUTED} fontFamily={MONO}
-        fontSize={25}>LOD List</text>
       {[0,1,2,3].map(i=>{
         const y=340+i*115;
         return <g key={i}>
@@ -95,8 +98,8 @@ export const CameraAndLodList:React.FC=()=>{
 
 const Wall:React.FC<{
   time:number;mode:WallMode;colorProgress?:number;gridOpacity?:number;
-  partitionOpacity?:number;captionTop?:string;
-}>=({time,mode,colorProgress=0,gridOpacity=0,partitionOpacity=0,captionTop})=>{
+  partitionOpacity?:number;
+}>=({time,mode,colorProgress=0,gridOpacity=0,partitionOpacity=0})=>{
   const view=viewAt(time);
   return <>
     <TriangleSurface mode={mode} view={view} colorProgress={colorProgress}
@@ -110,8 +113,6 @@ const Wall:React.FC<{
         x1={320} x2={1600} y1={255+i*40} y2={255+i*40}
         stroke={INK} strokeOpacity={0.17} strokeWidth={0.85}/>)}
     </g>}
-    {captionTop&&<text x={960} y={195} textAnchor="middle"
-      fill={MUTED} fontFamily={MONO} fontSize={25}>{captionTop}</text>}
   </>;
 };
 
@@ -122,12 +123,10 @@ export const WholeMeshLimit:React.FC=()=>{
   const caption=u<2/3?'但同一个 Mesh 通常只能整体选择一个 LOD。':
     '近处需要精细几何，远处却不必保留同样多的三角形。';
   const mode:WallMode=phase;
-  const label=phase==='local'?'Local detail':'Whole Mesh';
   return <Stage caption={caption}>
     <g opacity={smooth(0,1,time)}>
       <Wall time={u*duration} mode={mode}
-        colorProgress={phase==='local'?smooth(2/3,0.80,u)*0.48:0}
-        captionTop={label+' · '+wallMeshes[mode].triCount+' triangles'}/>
+        colorProgress={phase==='local'?smooth(2/3,0.80,u)*0.48:0}/>
     </g>
   </Stage>;
 };
