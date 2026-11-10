@@ -41,8 +41,8 @@ export const Episode01Chapter03:React.FC=()=>{
       <g opacity={simplifyAlpha}>
         {hierarchySnapshots[step].map((tri,i)=>(
           <polygon key={'collapsed-'+step+'-'+i} points={pathFor(tri,view,moving)}
-            fill="#314962" fillOpacity={0.78}
-            stroke={COLOR.white} strokeWidth={2.1} strokeOpacity={0.72}
+            fill="#525e66" fillOpacity={0.38}
+            stroke={COLOR.white} strokeWidth={1.6} strokeOpacity={0.64}
             strokeLinejoin="round"/>
         ))}
       </g>
@@ -79,9 +79,9 @@ export const Episode01Chapter03:React.FC=()=>{
         </g>
       )}
       <g opacity={visibleCounter} textAnchor="end" fontFamily={MONO}>
-        <text x={1650} y={172} fontSize={23} fill={COLOR.muted}>TRIANGLES</text>
-        <text x={1650} y={248} fontSize={66} fill={COLOR.gold}>{count}</text>
-        <text x={1650} y={284} fontSize={21} fill={COLOR.muted}>−2 / EDGE COLLAPSE</text>
+        <text x={1650} y={172} fontSize={23} fill={COLOR.muted}>三角形</text>
+        <text x={1650} y={248} fontSize={50} fill={COLOR.white}>{count}</text>
+        <text x={1650} y={284} fontSize={21} fill={COLOR.muted}>每次折叠减少 2 个</text>
       </g>
       <g opacity={smooth(35.5,37,t)*(1-smooth(47,49,t))}
         fontFamily={MONO} textAnchor="middle" fontSize={31}
@@ -91,9 +91,9 @@ export const Episode01Chapter03:React.FC=()=>{
       </g>
       <g opacity={smooth(43,46,t)} fontFamily={MONO} fontSize={29}
         textAnchor="middle">
-        <text x={960} y={173} fill={COLOR.muted}>FINE 4 CLUSTERS</text>
-        <text x={960} y={231} fill={COLOR.gold}>GROUP MERGE → EDGE COLLAPSE → REPARTITION</text>
-        <text x={960} y={290} fill={COLOR.muted}>COARSE 2 CLUSTERS</text>
+        <text x={960} y={210} fill={COLOR.muted} fontSize={26}>
+          4 Fine → Group 简化 → 2 Coarse
+        </text>
       </g>
       <Cue t={t} a={0} b={5.8}
         headline="SHARED BOUNDARIES"

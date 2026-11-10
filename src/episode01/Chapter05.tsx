@@ -58,22 +58,22 @@ function CameraErrorProof({t}: {t:number}) {
       </g>
       <g fontFamily={MONO} textAnchor="middle">
         <text x={960} y={252} fill={COLOR.muted} fontSize={29}>
-          WORLD ERROR: CONSTANT
+          World Error
         </text>
         <text x={960} y={321} fill={COLOR.white} fontSize={54}>
           {worldErr.toFixed(3)}
         </text>
         <text x={960} y={388} fill={COLOR.muted} fontSize={27}>
-          PROJECTED ERROR
+          Screen-space Error
         </text>
         <text x={960} y={465} fill={color} fontSize={70}>
           {error.toFixed(2)+' px'}
         </text>
         <text x={960} y={758} fill={COLOR.muted} fontSize={24}>
-          {'TEACHING THRESHOLD 1.00 px  ·  CAMERA DISTANCE '+cameraDist.toFixed(1)}
+          {'阈值 1.00 px    相机距离 '+cameraDist.toFixed(1)}
         </text>
         <text x={960} y={811} fill={color} fontSize={29}>
-          {hasRefined?'COARSE EXCEEDS THRESHOLD → REFINE':'COARSE ERROR ACCEPTABLE'}
+          {hasRefined?'超过阈值，需要细化':'当前精度足够'}
         </text>
       </g>
     </g>
@@ -97,8 +97,8 @@ export const Episode01Chapter05:React.FC=()=>{
     <g opacity={first}>
       {sourceTris.map((tri,i)=>(
         <polygon key={i} points={pathFor(tri,view,moving)}
-          fill="#27405b" fillOpacity={0.62}
-          stroke={COLOR.white} strokeWidth={1.9} strokeOpacity={0.76}/>
+          fill="#525e66" fillOpacity={0.40}
+          stroke={COLOR.white} strokeWidth={1.5} strokeOpacity={0.65}/>
       ))}
       {(()=>{
         const a=projectLocal(hierarchyVertices[moving.from],view);
@@ -111,14 +111,14 @@ export const Episode01Chapter05:React.FC=()=>{
           <path d={'M'+p.x+' '+p.y+' L'+p.x+' '+(p.y-110)}
             stroke={COLOR.cyan} strokeWidth={3} strokeDasharray="9 8"/>
           <text x={p.x+32} y={p.y-116} fill={COLOR.cyan}
-            fontFamily={MONO} fontSize={24}>COLLAPSE PATH · QEM IS EVALUATED SEPARATELY</text>
+            fontFamily={MONO} fontSize={24}>边折叠示意</text>
           <text x={960} y={345} fontSize={26} fontFamily={MONO}
             textAnchor="middle" fill={COLOR.white}>
-            {'QEM COST AT KEPT VERTEX = '+firstCollapseQEM.toFixed(4)}
+            {'QEM = '+firstCollapseQEM.toFixed(4)}
           </text>
           <text x={960} y={390} fontSize={21} fontFamily={MONO}
             textAnchor="middle" fill={COLOR.muted}>
-            {'SUM (n·v + d)² · NOT LOD ERROR · NOT OPTIMAL COLLAPSE COST'}
+            {'Σ (n·v + d)²   ·   非 LOD Error'}
           </text>
         </>;
       })()}
@@ -137,14 +137,14 @@ export const Episode01Chapter05:React.FC=()=>{
       <g fontFamily={MONO} textAnchor="middle"
         opacity={smooth(29,34,t)}>
         <text x={960} y={194} fontSize={25} fill={COLOR.muted}>
-          PARENT ERROR = MAX(CHILD ERRORS, SIMPLIFY ERROR)
+          Parent Error = max(Child Errors, Simplify Error)
         </text>
         <text x={960} y={253} fontSize={43} fill={COLOR.gold}>
           {'MAX(0, '+hierarchyError.simplifyStep.toFixed(3)+') = '+
             hierarchyError.parent.toFixed(3)}
         </text>
         <text x={960} y={828} fontSize={20} fill={COLOR.muted}>
-          TEACHING SAMPLE ERROR · UE 5.8.4 BUILDER USES SIMPLIFIER ERROR
+          误差取样用于教学，不是 UE Simplifier 的直接输出
         </text>
       </g>
     </g>
@@ -159,7 +159,7 @@ export const Episode01Chapter05:React.FC=()=>{
           B(parent) ⊇ B(child)
         </text>
         <text x={960} y={492} fill={COLOR.cyan} fontSize={27}>
-          ⇒ projected error stays ordered in the simplified model
+          简化投影模型下，误差保持有序
         </text>
       </g>
     )}

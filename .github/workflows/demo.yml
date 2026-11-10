@@ -31,6 +31,20 @@ jobs:
         run: npm run check
       - name: Check topology trace
         run: npm run validate:geometry
+      - name: Validate independently editable opening shot timeline
+        run: npm run validate:chapter01-timeline
+      - name: Render empty opening and narration caption
+        run: npm run still:episode01-opening
+      - name: Validate traditional LOD model and camera selection
+        run: npm run validate:traditional-lod
+      - name: Render traditional LOD versions
+        run: npm run still:episode01-versions
+      - name: Render camera and highlighted LOD list
+        run: npm run still:episode01-camera-lod
+      - name: Render whole-mesh limitation transition
+        run: npm run still:episode01-wall
+      - name: Render screen-pixel intuition
+        run: npm run still:episode01-pixels
       - name: Validate Episode 01 mesh LOD boundaries and triangle counts
         run: npm run validate:episode01
       - name: Render a representative vector frame
@@ -45,6 +59,10 @@ jobs:
         run: npm run validate:hierarchy
       - name: Render Group simplification scene
         run: npm run still:episode01-group
+      - name: Validate multilevel DAG cut invariants
+        run: npm run validate:dag-cut
+      - name: Render multilevel DAG cut
+        run: npm run still:episode01-multilevel-dag
       - name: Render DAG scene
         run: npm run still:episode01-dag
       - name: Render Error and Bounds scene
@@ -61,12 +79,18 @@ jobs:
           name: nanite-video-geometry-stills
           path: |
             out/cover.png
+            out/episode-01-opening.png
+            out/episode-01-lod-versions.png
+            out/episode-01-camera-lod.png
+            out/episode-01-wall-transition.png
+            out/episode-01-pixel-grid.png
             out/episode-01-local-lod.png
             out/episode-01-clusters.png
             out/episode-01-graph.png
             out/episode-01-partition.png
             out/episode-01-group.png
             out/episode-01-dag.png
+            out/episode-01-multilevel-dag.png
             out/episode-01-error.png
             out/episode-01-runtime.png
           retention-days: 7
