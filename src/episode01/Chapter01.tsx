@@ -1,4 +1,5 @@
 import React from 'react';
+import {traditionalLods,approachProgress,lodForApproach} from './traditionalLod';
 import {AbsoluteFill, useCurrentFrame} from 'remotion';
 import {
   STRIPS, ROWS, WORLD_LEFT, WORLD_RIGHT, WORLD_BOTTOM, WORLD_TOP,
@@ -6,18 +7,18 @@ import {
 } from './ch01Geometry';
 
 export const EPISODE_01_FPS = 30;
-export const CHAPTER_01_FRAMES = 1080; // Workprint only: 36 s, not a final time budget.
+export const CHAPTER_01_FRAMES = 2100; // 70 s workprint; revise after narration.
 
 const W = 1920;
 const H = 1080;
-const BASE = '#0d111e';
-const INK = '#e8edf8';
-const MUTED = '#8fa5bb';
-const GOLD = '#ffcf70';
-const CYAN = '#59d3e8';
+const BASE = '#101319';
+const INK = '#e9e9e5';
+const MUTED = '#87908f';
+const GOLD = '#d6b681';
+const CYAN = '#a2bcbc';
 const PALETTE = [
-  '#5bb8ed', '#70cc9e', '#f2ad62', '#b794ef', '#ed91ad',
-  '#7bbec7', '#d2bf7f', '#9badff', '#9bd281', '#d89cbf',
+  '#879da5', '#a0afa3', '#b3a18f', '#aaa4b0', '#a3a9a8',
+  '#8aa4a6', '#b9ab91', '#9fa8b3', '#9da99a', '#b5a7a9',
 ];
 const FONT = "'Noto Sans CJK SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif";
 const MONO = "'JetBrains Mono', 'Cascadia Code', monospace";
@@ -149,88 +150,145 @@ export function ClusterEdges({view, opacity}: {view: View; opacity: number}) {
   );
 }
 
-const cues = [
-  {from: 0, to: 7.6, a: 'MILLIONS OF TRIANGLES', b: '当几何细节远超屏幕实际需要'},
-  {from: 7.6, to: 13, a: 'WHOLE-MESH LOD', b: '整个 Mesh 同时切换精度'},
-  {from: 13, to: 19, a: 'LOW DETAIL · CLOSE VIEW', b: '靠近时，低精度可能丢失重要轮廓'},
-  {from: 19, to: 24.8, a: 'HIGH DETAIL · ENTIRE MESH', b: '保住近处细节，也可能保留远处冗余'},
-  {from: 24.8, to: 30.0, a: 'LOCAL GEOMETRY DETAIL', b: '局部需要高精度，其余区域可以更粗'},
-  {from: 30.0, to: 36.5, a: 'TRIANGLE CLUSTERS', b: '下一步：自动构建可独立管理的几何单元'},
-];
 
-function Caption({t}: {t: number}) {
-  const cue = cues.find((x) => t >= x.from && t < x.to) ?? cues[cues.length-1];
-  const fade = smooth(cue.from, cue.from + 0.5, t) *
-    (1 - smooth(cue.to - 0.38, cue.to, t));
-  return (
-    <g opacity={fade} textAnchor="middle">
-      <text x={960} y={942} fill={CYAN} fontFamily={MONO}
-        fontSize={26} letterSpacing={3}>{cue.a}</text>
-      <text x={960} y={1002} fill={INK} fontFamily={FONT}
-        fontSize={40}>{cue.b}</text>
-    </g>
-  );
+/**
+ * Intro sequence:
+ * 00–05  empty stage and spoken setup
+ * 05–13  four LOD versions of one procedural rock
+ * 13–28  continuous camera approach, discrete whole-object LOD swap
+ * 28–49  return to the wall: whole-mesh vs local detail
+ * 49–62  screen-pixel budget intuition
+ * 62–70  introduce geometric partitions into the next chapter
+ */
+function RockModel({level,cx,cy,size,opacity=1}:{
+  level:number;cx:number;cy:number;size:number;opacity?:number;
+}){
+  const yaw=0.48,pitch=-0.12;
+  const projectRock=(v:readonly [number,number,number])=>{
+    const [x,y,z]=v;
+    const rx=x*Math.cos(yaw)+z*Math.sin(yaw);
+    const rz=-x*Math.sin(yaw)+z*Math.cos(yaw);
+    const ry=y*Math.cos(pitch)-rz*Math.sin(pitch);
+    const depth=y*Math.sin(pitch)+rz*Math.cos(pitch);
+    return {x:cx+rx*size,y:cy-ry*size,z:depth};
+  };
+  const tris=traditionalLods[level].triangles.map((tri,index)=>{
+    const a=projectRock(tri[0]),b=projectRock(tri[1]),c=projectRock(tri[2]);
+    const ux=b.x-a.x,uy=b.y-a.y,vx=c.x-a.x,vy=c.y-a.y;
+    const shade=Math.max(0.18,Math.min(0.86,0.46+(ux*vy-uy*vx)/(size*size)*0.16));
+    return {index,depth:(a.z+b.z+c.z)/3,
+      points:[a,b,c].map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' '),
+      shade};
+  }).sort((a,b)=>a.depth-b.depth);
+  return <g opacity={opacity}>
+    {tris.map(tri=><polygon key={tri.index} points={tri.points}
+      fill={'hsl(192 11% '+(25+tri.shade*33).toFixed(1)+'%)'}
+      stroke={INK} strokeOpacity={0.34} strokeWidth={0.7}
+      strokeLinejoin="round"/>)}
+  </g>;
 }
-
-/** Opening algorithm animatic: one mesh, several actual triangle sets. */
-export const Episode01Chapter01: React.FC = () => {
-  const frame = useCurrentFrame();
-  const t = frame / EPISODE_01_FPS;
-  const mode: WallMode = t < 8.4 ? 'fine' : t < 19 ? 'coarse' :
-    t < 24.8 ? 'fine' : 'local';
-  const view = viewAt(t);
-  const reveal = smooth(0, 3.3, t);
-  const wireOpacity = 0.12 + 0.65 * smooth(2.5, 6.6, t);
-  const colored = smooth(29, 33.5, t);
-  const localHalo = smooth(24.7, 26.4, t) * (1 - smooth(29, 32, t));
-  const triangleCount = wallMeshes[mode].triCount;
-  const countsVisibility = smooth(7.4, 8.6, t) * (1 - smooth(28.8, 30.6, t));
-  const titleOpacity = 1 - smooth(2.0, 4.6, t);
-  const flash = [8.4, 19, 24.8].reduce((max, e) =>
-    Math.max(max, Math.max(0, 1 - Math.abs(t-e) / 0.32)), 0);
-
-  return (
-    <AbsoluteFill style={{
-      overflow: 'hidden', background:
-        'radial-gradient(circle at 47% 45%, #1b293b, #0d111e 70%)',
-      fontFamily: FONT, color: INK,
-    }}>
-      <svg viewBox={'0 0 ' + W + ' ' + H} width="100%" height="100%">
-        <defs>
-          <clipPath id="chapter01-reveal">
-            <rect x={960 - reveal * 920} y={0}
-              width={reveal * 1840} height={H} />
-          </clipPath>
-        </defs>
-        <g clipPath="url(#chapter01-reveal)">
-          <TriangleSurface mode={mode} view={view}
-            colorProgress={colored}
-            wireOpacity={wireOpacity}
-            glow={localHalo}/>
-          <ClusterEdges view={view} opacity={smooth(30.8, 34, t)}/>
+function BottomLine({text,opacity=1}: {text:string;opacity?:number}){
+  return <text x={960} y={996} fontFamily={FONT} fontSize={34}
+    textAnchor="middle" fill={INK} opacity={opacity}>{text}</text>;
+}
+export const Episode01Chapter01:React.FC=()=>{
+  const t=useCurrentFrame()/EPISODE_01_FPS;
+  const intro=smooth(0.5,2.2,t)*(1-smooth(4.3,5,t));
+  const lineup=smooth(5,6.2,t)*(1-smooth(12.4,13,t));
+  const split=smooth(13,14.2,t)*(1-smooth(27,28,t));
+  const distance=approachProgress((t-14)/12.5);
+  const selected=lodForApproach(distance);
+  const rockSize=lerp(95,345,distance);
+  const wallT=Math.max(0,t-28);
+  const wallAlpha=smooth(28,29.2,t);
+  const view=viewAt(wallT);
+  const mode:WallMode=t<35?'coarse':t<42?'fine':'local';
+  const meshColor=smooth(43,47,t)*0.48;
+  const gridAlpha=smooth(50,52,t)*(1-smooth(56.2,58,t));
+  const partitionAlpha=smooth(62,66,t);
+  const meshOpacity=0.13+0.52*smooth(29,38,t);
+  const notes=t<5?'对于远处的物体，我们通常不需要它的全部几何细节。':
+    t<13?'因此，传统 LOD 会为同一个模型准备多个精度版本。':
+    t<28?'摄像机靠近时，整个模型在预先准备的版本之间切换。':
+    t<42?'但同一个 Mesh 通常只能整体选择一个 LOD。':
+    t<49?'近处需要精细几何，远处却不必保留同样多的三角形。':
+    t<62?'Nanite 希望几何开销尽可能随屏幕所需的细节变化。':
+    '这需要把几何组织成更小、可以独立选择的单元。';
+  const notesOpacity=t<5?intro:t<13?lineup:t<28?split:wallAlpha;
+  return <AbsoluteFill style={{overflow:'hidden',background:BASE,fontFamily:FONT}}>
+    <svg viewBox="0 0 1920 1080" height="100%" width="100%">
+      {t>=5&&t<13&&(
+        <g opacity={lineup}>
+          {[0,1,2,3].map(i=>{
+            const x=310+i*430;
+            return <g key={i}>
+              <RockModel level={i} cx={x} cy={489} size={142}/>
+              <text x={x} y={733} fill={INK} fontFamily={MONO}
+                textAnchor="middle" fontSize={29}>{'LOD'+i}</text>
+              <text x={x} y={779} fill={MUTED} fontFamily={MONO}
+                textAnchor="middle" fontSize={22}>
+                {traditionalLods[i].triangleCount+' triangles'}
+              </text>
+            </g>;
+          })}
         </g>
-        <text x={960} y={135} opacity={titleOpacity}
-          textAnchor="middle" fill={INK} fontSize={48} fontWeight={650}>
-          从 Mesh 到 Cluster DAG
-        </text>
-        {countsVisibility > 0.001 && (
-          <g opacity={countsVisibility} fontFamily={MONO} textAnchor="end">
-            <text x={1740} y={170} fill={MUTED} fontSize={24}>TRIANGLES</text>
-            <text x={1740} y={229} fill={GOLD} fontSize={57}>
-              {triangleCount.toLocaleString('en-US')}
+      )}
+      {t>=13&&t<28&&(
+        <g opacity={split}>
+          <line x1={1280} y1={175} x2={1280} y2={850}
+            stroke={MUTED} strokeWidth={1} opacity={0.38}/>
+          <g>
+            <RockModel level={selected} cx={660} cy={490} size={rockSize}/>
+            <text x={116} y={136} fill={MUTED} fontFamily={MONO}
+              fontSize={22}>Camera</text>
+            <text x={116} y={817} fill={MUTED} fontFamily={MONO}
+              fontSize={22}>
+              {'距离逐渐缩短   '+(16-12*distance).toFixed(1)}
             </text>
           </g>
-        )}
-        {flash > 0 && (
-          <rect x={0} y={0} width={W} height={H}
-            fill={INK} opacity={flash * 0.055} pointerEvents="none"/>
-        )}
-        <Caption t={t}/>
-        <text x={110} y={1043} fill={MUTED}
-          fontFamily={MONO} fontSize={19} opacity={0.65}>
-          CONCEPTUAL MESH LOD · PROCEDURAL TOPOLOGY · NOT UE CAPTURE
-        </text>
-      </svg>
-    </AbsoluteFill>
-  );
+          <text x={1405} y={270} fill={MUTED} fontFamily={MONO}
+            fontSize={25}>LOD List</text>
+          {[0,1,2,3].map(i=>{
+            const y=340+i*115;
+            return <g key={i}>
+              {selected===i&&<rect x={1390} y={y} width={400} height={89}
+                rx={8} fill={INK} fillOpacity={0.11}
+                stroke={INK} strokeOpacity={0.64} strokeWidth={1.5}/>}
+              <text x={1415} y={y+55} fill={selected===i?INK:MUTED}
+                fontFamily={MONO} fontSize={29}>{'LOD'+i}</text>
+              <text x={1740} y={y+55} fill={selected===i?INK:MUTED}
+                fontFamily={MONO} fontSize={22} textAnchor="end">
+                {traditionalLods[i].triangleCount}
+              </text>
+            </g>;
+          })}
+        </g>
+      )}
+      {t>=28&&(
+        <g opacity={wallAlpha}>
+          <TriangleSurface mode={mode} view={view}
+            colorProgress={meshColor}
+            wireOpacity={meshOpacity} glow={0}/>
+          {t>=62&&<ClusterEdges view={view} opacity={partitionAlpha*0.63}/>}
+          {gridAlpha>0&&<g opacity={gridAlpha}>
+            {Array.from({length:33},(_,i)=><line key={'v'+i}
+              x1={320+i*40} x2={320+i*40} y1={255} y2={775}
+              stroke={INK} strokeOpacity={0.17} strokeWidth={0.85}/>)}
+            {Array.from({length:14},(_,i)=><line key={'h'+i}
+              x1={320} x2={1600} y1={255+i*40} y2={255+i*40}
+              stroke={INK} strokeOpacity={0.17} strokeWidth={0.85}/>)}
+          </g>}
+          {t>=38&&t<43&&<text x={960} y={195} fontSize={25}
+            fill={MUTED} fontFamily={MONO} textAnchor="middle">
+            {'Whole Mesh · '+wallMeshes[mode].triCount+' triangles'}
+          </text>}
+          {t>=44&&t<57&&<text x={960} y={195} fontSize={25}
+            fill={MUTED} fontFamily={MONO} textAnchor="middle">
+            {'Local detail · '+wallMeshes.local.triCount+' triangles'}
+          </text>}
+        </g>
+      )}
+      <BottomLine text={notes} opacity={notesOpacity}/>
+    </svg>
+  </AbsoluteFill>;
 };
