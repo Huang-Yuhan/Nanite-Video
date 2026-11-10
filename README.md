@@ -67,7 +67,7 @@ src/
 ## 六章内容及技术边界
 
 1. **传统 LOD → Nanite 动机**：传统 LOD 对比使用 Moon Rock 02 及作者已有的 LOD0–3（3304 / 1652 / 826 / 412 三角形）；整体 LOD 局限镜头改用 Namaqualand Cliff 01 的作者原有 LOD0 / LOD3（94369 / 11794 三角形），通过同一机位展示近处精度与远处冗余，并延续到屏幕细节镜头。两者均未自行简化，来源和导出方式见 [`Moon Rock 02`](assets/models/moon-rock-02/) 与 [`Namaqualand Cliff 01`](assets/models/namaqualand-cliff-01/)。分簇前明确切换到简化教学网格，第二章沿用该网格，不将其冒称为真实岩壁的提取结果。
-2. **Triangle Clustering**：展示真实共享边构造的 Triangle Adjacency Graph 与教学分区，不冒称 METIS 的实际划分结果
+2. **Triangle Clustering**：先高亮两个三角形的真实共享边，再让 32 个三角形缩成点、40 条共享边转成邻接连线；对比同为四组、每组八个三角形的两种教学分区，跨组连接从 40 减少到 8，最后回到四个细簇 F0–F3。不冒称 METIS 的实际划分结果。
 3. **Grouping & Simplification**：四个 Fine 聚合、锁 Group 外边界、八次拓扑验证的 Collapse、再划为两个 Coarse
 4. **Cluster DAG**：先讲单 Group 的 4→2，再用独立构造的多层依赖示例展示合法 Cut；不把 DAG 当成运行时 BVH
 5. **LOD Error / Bounds**：区分 QEM 的平方平面距离、采样得到的教学误差与 UE 的 Simplifier Error；屏幕误差阈值同样为演示值

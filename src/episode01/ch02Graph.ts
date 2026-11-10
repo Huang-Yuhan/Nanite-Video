@@ -1,8 +1,9 @@
 /**
- * Chapter 02: a real topological dual graph extracted from Chapter 01's wall.
+ * Chapter 02: the real topological dual graph of the bridge's teaching patch.
  *
  * Sample: 4 × 4 quads = 32 triangles, taken from fine strip #2,
- * rows 4..7. Each graph edge corresponds to exactly one shared Mesh edge.
+ * rows 4..7 of the procedural study data. This is not a crop of the scanned
+ * cliff. Each graph edge corresponds to exactly one shared Mesh edge.
  *
  * "strided" is deliberately poor, not a Nanite partitioner.
  * "compact" is a hand-constructed connected partition, not METIS output.
@@ -68,6 +69,17 @@ export const triangleGraphEdges: readonly GraphEdge[] = [...incidence.values()]
   .filter((ids) => ids.length === 2)
   .map(([a, b]) => ({a, b}))
   .sort((u, v) => u.a - v.a || u.b - v.b);
+
+// Keep the actual mesh edge with each dual-graph link. The animation can
+// transform that edge into a centroid-to-centroid connection without
+// inventing adjacency or losing triangle identity.
+export const triangleGraphLinks = triangleGraphEdges.map(edge => {
+  const a=triangleGraphNodes[edge.a].triangle.corners;
+  const b=triangleGraphNodes[edge.b].triangle.corners;
+  const shared=a.filter(p=>b.some(q=>key3(p)===key3(q)));
+  if(shared.length!==2)throw new Error('Graph link must have exactly one shared mesh edge');
+  return {...edge,shared:shared as unknown as readonly [Vec3,Vec3]};
+});
 
 export const STRIDED_LABELS = triangleGraphNodes.map((node) => node.id % 4);
 export const COMPACT_LABELS = triangleGraphNodes.map((node) =>
