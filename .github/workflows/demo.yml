@@ -31,6 +31,10 @@ jobs:
         run: npm run check
       - name: Check topology trace
         run: npm run validate:geometry
+      - name: Validate independently editable opening shot timeline
+        run: npm run validate:chapter01-timeline
+      - name: Render empty opening and narration caption
+        run: npm run still:episode01-opening
       - name: Validate traditional LOD model and camera selection
         run: npm run validate:traditional-lod
       - name: Render traditional LOD versions
@@ -75,6 +79,7 @@ jobs:
           name: nanite-video-geometry-stills
           path: |
             out/cover.png
+            out/episode-01-opening.png
             out/episode-01-lod-versions.png
             out/episode-01-camera-lod.png
             out/episode-01-wall-transition.png
