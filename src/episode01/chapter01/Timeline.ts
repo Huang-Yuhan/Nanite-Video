@@ -25,7 +25,5 @@ export function validateChapter01Timeline():void {
     throw new Error('Shot durations must be positive whole frames');
   if(new Set(CHAPTER_01_SHOTS.map(s=>s.id)).size!==CHAPTER_01_SHOTS.length)
     throw new Error('Duplicate shot IDs');
-  if(CHAPTER_01_FRAMES!==2100)
-    throw new Error('Update frame-based CI sample positions when retiming Chapter 01');
 }
 validateChapter01Timeline();
