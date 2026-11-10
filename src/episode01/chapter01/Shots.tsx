@@ -1,12 +1,12 @@
 import React from 'react';
 import {AbsoluteFill,useCurrentFrame} from 'remotion';
 import {traditionalLods,approachProgress,lodForApproach} from '../traditionalLod';
-import {type WallMode} from '../ch01Geometry';
 import {
-  W,H,BASE,INK,MUTED,MONO,BottomLine,RockModel,TriangleSurface,
-  ClusterEdges,viewAt,smooth,lerp,
+  W,H,BASE,INK,MUTED,MONO,BottomLine,RockModel,smooth,lerp,
 } from './Visuals';
 import {EPISODE_01_FPS,CHAPTER_01_SHOTS,type ShotId} from './Timeline';
+import {CliffModel} from './CliffModel';
+import {TeachingPatch} from './TeachingPatch';
 
 const shotDuration=(id:ShotId)=>
   CHAPTER_01_SHOTS.find(s=>s.id===id)!.seconds;
@@ -96,60 +96,49 @@ export const CameraAndLodList:React.FC=()=>{
   </Stage>;
 };
 
-const Wall:React.FC<{
-  time:number;mode:WallMode;colorProgress?:number;gridOpacity?:number;
-  partitionOpacity?:number;
-}>=({time,mode,colorProgress=0,gridOpacity=0,partitionOpacity=0})=>{
-  const view=viewAt(time);
-  return <>
-    <TriangleSurface mode={mode} view={view} colorProgress={colorProgress}
-      wireOpacity={0.62} glow={0}/>
-    {partitionOpacity>0&&<ClusterEdges view={view} opacity={partitionOpacity}/>}
-    {gridOpacity>0&&<g opacity={gridOpacity}>
-      {Array.from({length:33},(_,i)=><line key={'v'+i}
-        x1={320+i*40} x2={320+i*40} y1={255} y2={775}
-        stroke={INK} strokeOpacity={0.17} strokeWidth={0.85}/>)}
-      {Array.from({length:14},(_,i)=><line key={'h'+i}
-        x1={320} x2={1600} y1={255+i*40} y2={255+i*40}
-        stroke={INK} strokeOpacity={0.17} strokeWidth={0.85}/>)}
-    </g>}
-  </>;
-};
-
-/** 03. Use the same wall from the previous workprint. */
+/** 03. A scanned cliff, switching complete author-supplied LOD meshes. */
 export const WholeMeshLimit:React.FC=()=>{
-  const {u,duration,time}=useShotTime('wall');
-  const phase=u<1/3?'coarse':u<2/3?'fine':'local';
-  const caption=u<2/3?'但同一个 Mesh 通常只能整体选择一个 LOD。':
-    '近处需要精细几何，远处却不必保留同样多的三角形。';
-  const mode:WallMode=phase;
+  const {u,time}=useShotTime('wall');
+  const level=u<1/3?'coarse':'fine';
+  const caption=u<1/3?
+    '但同一块岩壁横跨远近，粗 LOD 也会降低近处的精度。':u<2/3?
+    '换成细 LOD，近处清楚了，远处却也保留了大量三角形。':
+    '能不能只增加近处需要的细节？';
+  const nearWire=smooth(0.07,0.14,u)*(1-smooth(0.27,0.32,u))*0.42;
+  const farWire=smooth(0.40,0.46,u)*(1-smooth(0.60,0.66,u))*0.34;
   return <Stage caption={caption}>
     <g opacity={smooth(0,1,time)}>
-      <Wall time={u*duration} mode={mode}
-        colorProgress={phase==='local'?smooth(2/3,0.80,u)*0.48:0}/>
+      <CliffModel level={level} nearWire={nearWire} farWire={farWire}/>
     </g>
   </Stage>;
 };
 
 /** 04. Pixel-grid is a brief illustrative overlay, not a performance claim. */
 export const PixelBudget:React.FC=()=>{
-  const {u,time}=useShotTime('pixels');
+  const {u}=useShotTime('pixels');
   const grid=smooth(0.08,0.22,u)*(1-smooth(0.55,0.78,u));
   return <Stage caption="Nanite 希望几何开销尽可能随屏幕所需的细节变化。">
-    <g opacity={smooth(0,0.8,time)}>
-      <Wall time={21+u*13} mode="local" colorProgress={0.48}
-        gridOpacity={grid}/>
+    {/* The same surface stays opaque across consecutive shot boundaries. */}
+    <CliffModel level="fine"/>
+    <g opacity={grid*0.5}>
+      {Array.from({length:24},(_,i)=><line key={'v'+i}
+        x1={500+i*40} x2={500+i*40} y1={230} y2={790}
+        stroke={INK} strokeOpacity={0.25} strokeWidth={0.85}/>)}
+      {Array.from({length:15},(_,i)=><line key={'h'+i}
+        x1={500} x2={1420} y1={230+i*40} y2={230+i*40}
+        stroke={INK} strokeOpacity={0.25} strokeWidth={0.85}/>)}
     </g>
   </Stage>;
 };
 
 /** 05. From the wall to the cluster chapter: geometry is the subject. */
 export const ClusteringBridge:React.FC=()=>{
-  const {u,time}=useShotTime('clusters');
-  return <Stage caption="这需要把几何组织成更小、可以独立选择的单元。">
-    <g opacity={smooth(0,0.8,time)}>
-      <Wall time={34+u*8} mode="local" colorProgress={0.48}
-        partitionOpacity={smooth(0.08,0.58,u)*0.63}/>
-    </g>
+  const {u}=useShotTime('clusters');
+  const teaching=smooth(0.42,0.72,u);
+  const caption=u<0.42?'这需要把几何组织成更小、可以独立选择的单元。':
+    '接下来，用一块简化网格观察三角形如何分簇。';
+  return <Stage caption={caption}>
+    <g opacity={1-teaching}><CliffModel level="fine"/></g>
+    <g opacity={teaching}><TeachingPatch/></g>
   </Stage>;
 };

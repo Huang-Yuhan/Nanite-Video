@@ -1,7 +1,7 @@
 import React from 'react';
 import {AbsoluteFill, useCurrentFrame} from 'remotion';
-import {wallMeshes, type Vec3} from './ch01Geometry';
-import {ClusterEdges, TriangleSurface, project, viewAt} from './Chapter01';
+import {type Vec3} from './ch01Geometry';
+import {projectTeachingPatch} from './chapter01/TeachingPatch';
 import {
   triangleGraphNodes, triangleGraphEdges,
   stridedPartition, compactPartition, COMPACT_LABELS,
@@ -36,34 +36,12 @@ const easing = (t: number) => ({
   compact: smooth(18.2, 20.2, t),
   back: smooth(26, 30.2, t),
 });
-const sourceProject = (p: Vec3): P2 => project(p, viewAt(36));
-
-const patchCenter: Vec3 = (() => {
-  const center = triangleGraphNodes.reduce(
-    (acc, node) => [
-      acc[0] + node.center[0],
-      acc[1] + node.center[1],
-      acc[2] + node.center[2],
-    ] as [number, number, number], [0,0,0],
-  );
-  return center.map((v) => v / triangleGraphNodes.length) as unknown as Vec3;
-})();
-const sourceCenter = sourceProject(patchCenter);
-
 /**
- * Keeps the source mesh identity while pushing the selected patch towards
- * a readable graph stage. Both nodes and their triangle geometry use this.
+ * A shared projection keeps the small teaching patch continuous with the
+ * Chapter 01 bridge. Nodes and triangles always use the same coordinates.
  */
 function patchProject(p: Vec3, zoomProgress: number): P2 {
-  const source = sourceProject(p);
-  const blownUp = {
-    x: 960 + (source.x - sourceCenter.x) * 3.2,
-    y: 495 + (source.y - sourceCenter.y) * 4.15,
-  };
-  return {
-    x: mix(source.x, blownUp.x, zoomProgress),
-    y: mix(source.y, blownUp.y, zoomProgress),
-  };
+  return projectTeachingPatch(p,zoomProgress);
 }
 
 function meshPolygon(corners: readonly Vec3[], center: Vec3, zoom: number, collapse: number) {
@@ -84,10 +62,10 @@ function PatchMesh({t}: {t: number}) {
         <g key={node.id}>
           <polygon
             points={meshPolygon(node.triangle.corners, node.center, zoom, graph)}
-            fill="#293c52"
+            fill="#25303a"
             stroke={WHITE}
-            strokeWidth={1.9}
-            strokeOpacity={0.77}
+            strokeWidth={1.5}
+            strokeOpacity={0.60}
             strokeLinejoin="round"
           />
           <polygon
@@ -187,7 +165,7 @@ function CompactLabels({t}: {t:number}) {
 
 function AnimationCaption({t}: {t:number}) {
   const sections=[
-    {a:0,b:4.5,title:'FROM MESH TO TRIANGLES',sub:'沿用第一章同一份岩壁几何'},
+    {a:0,b:4.5,title:'FROM MESH TO TRIANGLES',sub:'沿用刚才的简化网格，观察三角形之间的连接'},
     {a:4.5,b:9,title:'TRIANGLE ADJACENCY',sub:'共享边连接相邻三角形'},
     {a:9,b:13.0,title:'MESH → GRAPH',sub:'Triangle 变成 Node，共享边变成 Edge'},
     {a:13,b:18.5,title:'NAIVE PARTITION',sub:'虽然大小相同，却切断大量邻接边'},
@@ -198,8 +176,6 @@ function AnimationCaption({t}: {t:number}) {
   const opacity=smooth(cue.a,cue.a+0.42,t)*(1-smooth(cue.b-0.4,cue.b,t));
   return (
     <g opacity={opacity} textAnchor="middle">
-      <text x={960} y={940} fill={CYAN} fontSize={26}
-        fontFamily={MONO} letterSpacing={3}>{cue.title}</text>
       <text x={960} y={1000} fill={WHITE} fontSize={38}
         fontFamily={FONT}>{cue.sub}</text>
     </g>
@@ -233,19 +209,13 @@ function CutScore({t}: {t:number}) {
 export const Episode01Chapter02: React.FC=()=>{
   const frame=useCurrentFrame();
   const t=frame/CHAPTER_02_FPS;
-  const fullWallFade=1-smooth(2.4,7.1,t);
   return (
     <AbsoluteFill style={{
       overflow:'hidden',
-      background:'radial-gradient(circle at 47% 45%, #1b293b, #0d111e 70%)',
+      background:'#101319',
       fontFamily:FONT,color:WHITE,
     }}>
       <svg width="100%" height="100%" viewBox={'0 0 '+W+' '+H}>
-        <g opacity={fullWallFade}>
-          <TriangleSurface mode="local" view={viewAt(36)}
-            colorProgress={1} wireOpacity={0.77} glow={0}/>
-          <ClusterEdges view={viewAt(36)} opacity={1}/>
-        </g>
         <PatchMesh t={t}/>
         <GraphView t={t}/>
         <CompactLabels t={t}/>

@@ -1,0 +1,26 @@
+{
+  "asset": "namaqualand_cliff_01",
+  "sourceUrl": "https://polyhaven.com/a/namaqualand_cliff_01",
+  "sourceSha256": "eba0ae3947ec26c866f9174b6a70816d96b1d3c543356fa6d27f0d8a4eef09f1",
+  "layout": "little-endian float32: x,y,z,u,v per triangle corner; Blender Z-up converted to Y-up",
+  "lods": [
+    {
+      "id": "coarse",
+      "sourceObject": "namaqualand_cliff_01_LOD3",
+      "triangles": 11794,
+      "vertices": 6082,
+      "bytes": 707640,
+      "sha256": "5a744d97014c0879ff01c2c014e4c514a58266047f124a8ad3e4ce803b7b5542",
+      "file": "coarse.bin.gz"
+    },
+    {
+      "id": "fine",
+      "sourceObject": "namaqualand_cliff_01_LOD0",
+      "triangles": 94369,
+      "vertices": 47472,
+      "bytes": 5662140,
+      "sha256": "f52b73ef56bc558f8fe3319d2565a5025755d2fcce1b14626110b515b70941d4",
+      "file": "fine.bin.gz"
+    }
+  ]
+}
