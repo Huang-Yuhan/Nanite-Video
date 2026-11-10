@@ -17,7 +17,7 @@
     "still:episode01-partition": "remotion still src/index.ts Episode01Workprint out/episode-01-partition.png --frame=2810",
     "still:episode01-clusters-ch02": "remotion still src/index.ts Episode01Workprint out/episode-01-ch02-clusters.png --frame=3110",
     "validate:hierarchy": "node --experimental-strip-types src/episode01/ch03Hierarchy.ts",
-    "validate:all": "npm run validate:geometry && npm run validate:episode01 && npm run validate:chapter02 && npm run validate:hierarchy && npm run validate:dag-cut && npm run validate:traditional-lod",
+    "validate:all": "npm run validate:geometry && npm run validate:episode01 && npm run validate:chapter02 && npm run validate:hierarchy && npm run validate:dag-cut && npm run validate:traditional-lod && npm run validate:chapter01-timeline",
     "still:episode01-group": "remotion still src/index.ts Episode01Workprint out/episode-01-group.png --frame=3720",
     "still:episode01-dag": "remotion still src/index.ts Episode01Workprint out/episode-01-dag.png --frame=5490",
     "still:episode01-error": "remotion still src/index.ts Episode01Workprint out/episode-01-error.png --frame=7350",
@@ -30,7 +30,9 @@
     "still:episode01-camera-lod": "remotion still src/index.ts Episode01Workprint out/episode-01-camera-lod.png --frame=690",
     "still:episode01-wall": "remotion still src/index.ts Episode01Workprint out/episode-01-wall-transition.png --frame=1380",
     "still:episode01-pixels": "remotion still src/index.ts Episode01Workprint out/episode-01-pixel-grid.png --frame=1610",
-    "validate:traditional-lod": "node --experimental-strip-types src/episode01/traditionalLod.ts"
+    "validate:traditional-lod": "node --experimental-strip-types src/episode01/traditionalLod.ts",
+    "validate:chapter01-timeline": "node --experimental-strip-types src/episode01/chapter01/Timeline.ts",
+    "still:episode01-opening": "remotion still src/index.ts Episode01Workprint out/episode-01-opening.png --frame=90"
   },
   "dependencies": {
     "react": "^19.0.0",
